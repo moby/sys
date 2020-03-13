@@ -37,8 +37,15 @@ func (e *mountError) Error() string {
 	return out
 }
 
-// Cause returns the underlying cause of the error
+// Cause returns the underlying cause of the error.
+// This is a convention used in github.com/pkg/errors
 func (e *mountError) Cause() error {
+	return e.err
+}
+
+// Unwrap returns the underlying error.
+// This is a convention used in golang 1.13+
+func (e *mountError) Unwrap() error {
 	return e.err
 }
 
