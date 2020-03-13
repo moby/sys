@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/moby/sys/mountinfo"
 )
 
 func TestMount(t *testing.T) {
@@ -115,7 +117,7 @@ func ensureUnmount(t *testing.T, mnt string) {
 
 // validateMount checks that mnt has the given options
 func validateMount(t *testing.T, mnt string, opts, optional, vfs string) {
-	info, err := GetMounts(nil)
+	info, err := mountinfo.GetMounts(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +143,7 @@ func validateMount(t *testing.T, mnt string, opts, optional, vfs string) {
 		}
 	}
 
-	mnts := make(map[int]*Info, len(info))
+	mnts := make(map[int]*mountinfo.Info, len(info))
 	for _, mi := range info {
 		mnts[mi.ID] = mi
 	}

@@ -1,5 +1,7 @@
 package mount
 
+import "github.com/moby/sys/mountinfo"
+
 // MakeShared ensures a mounted filesystem has the SHARED mount option enabled.
 // See the supported options in flags.go for further reference.
 func MakeShared(mountPoint string) error {
@@ -51,7 +53,7 @@ func MakeRUnbindable(mountPoint string) error {
 // MakeMount ensures that the file or directory given is a mount point,
 // bind mounting it to itself it case it is not.
 func MakeMount(mnt string) error {
-	mounted, err := Mounted(mnt)
+	mounted, err := mountinfo.Mounted(mnt)
 	if err != nil {
 		return err
 	}

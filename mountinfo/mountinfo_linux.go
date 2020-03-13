@@ -1,6 +1,6 @@
 // +build go1.13
 
-package mount
+package mountinfo
 
 import (
 	"bufio"

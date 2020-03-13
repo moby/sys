@@ -1,4 +1,4 @@
-package mount
+package mountinfo
 
 // GetMounts retrieves a list of mounts for the current running process,
 // with an optional filter applied (use nil for no filter).

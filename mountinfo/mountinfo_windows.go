@@ -1,4 +1,4 @@
-package mount
+package mountinfo
 
 func parseMountTable(f FilterFunc) ([]*Info, error) {
 	// Do NOT return an error!

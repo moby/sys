@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+
+	"github.com/moby/sys/mountinfo"
 )
 
 // mountError records an error from mount or unmount operation
@@ -76,7 +78,7 @@ func Unmount(target string) error {
 // RecursiveUnmount unmounts the target and all mounts underneath, starting with
 // the deepsest mount first.
 func RecursiveUnmount(target string) error {
-	mounts, err := parseMountTable(PrefixFilter(target))
+	mounts, err := mountinfo.GetMounts(mountinfo.PrefixFilter(target))
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 	"testing"
+
+	"github.com/moby/sys/mountinfo"
 )
 
 func TestMountOptionsParsing(t *testing.T) {
@@ -67,7 +69,7 @@ func TestMounted(t *testing.T) {
 		}
 	}()
 
-	mounted, err := Mounted(targetDir)
+	mounted, err := mountinfo.Mounted(targetDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,24 +127,6 @@ func TestMountReadonly(t *testing.T) {
 	_, err = os.OpenFile(targetPath, os.O_RDWR, 0777)
 	if err == nil {
 		t.Fatal("Should not be able to open a ro file as rw")
-	}
-}
-
-func TestGetMounts(t *testing.T) {
-	mounts, err := GetMounts(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	root := false
-	for _, entry := range mounts {
-		if entry.Mountpoint == "/" {
-			root = true
-		}
-	}
-
-	if !root {
-		t.Fatal("/ should be mounted at least")
 	}
 }
 
