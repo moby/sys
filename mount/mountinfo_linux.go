@@ -1,3 +1,5 @@
+// +build go1.13
+
 package mount
 
 import (
@@ -7,8 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 func parseInfoFile(r io.Reader, filter FilterFunc) ([]*Info, error) {
@@ -64,7 +64,7 @@ func parseInfoFile(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		for fields[sepIdx] != "-" {
 			sepIdx--
 			if sepIdx == 5 {
-				return nil, errors.Errorf("Parsing '%s' failed: missing - separator", text)
+				return nil, fmt.Errorf("Parsing '%s' failed: missing - separator", text)
 			}
 		}
 
@@ -74,7 +74,7 @@ func parseInfoFile(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		// (currently only Mountpoint and Fstype)
 		p.Mountpoint, err = strconv.Unquote(`"` + fields[4] + `"`)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Parsing '%s' failed: unable to unquote mount point field", fields[4])
+			return nil, fmt.Errorf("Parsing '%s' failed: unable to unquote mount point field: %w", fields[4], err)
 		}
 		p.Fstype = fields[sepIdx+1]
 
@@ -102,7 +102,7 @@ func parseInfoFile(r io.Reader, filter FilterFunc) ([]*Info, error) {
 
 		p.Root, err = strconv.Unquote(`"` + fields[3] + `"`)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Parsing '%s' failed: unable to unquote root field", fields[3])
+			return nil, fmt.Errorf("Parsing '%s' failed: unable to unquote root field: %w", fields[3], err)
 		}
 
 		p.Opts = fields[5]
