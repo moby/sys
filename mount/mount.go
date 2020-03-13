@@ -49,23 +49,6 @@ func (e *mountError) Unwrap() error {
 	return e.err
 }
 
-// GetMounts retrieves a list of mounts for the current running process,
-// with an optional filter applied (use nil for no filter).
-func GetMounts(f FilterFunc) ([]*Info, error) {
-	return parseMountTable(f)
-}
-
-// Mounted determines if a specified mountpoint has been mounted.
-// On Linux it looks at /proc/self/mountinfo.
-func Mounted(mountpoint string) (bool, error) {
-	entries, err := GetMounts(SingleEntryFilter(mountpoint))
-	if err != nil {
-		return false, err
-	}
-
-	return len(entries) > 0, nil
-}
-
 // Mount will mount filesystem according to the specified configuration.
 // Options must be specified like the mount or fstab unix commands:
 // "opt1=val1,opt2=val2". See flags.go for supported option flags.
