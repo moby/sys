@@ -1,10 +1,11 @@
+// +build go1.13
+
 package mount
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
-
-	"github.com/sirupsen/logrus"
 )
 
 // mountError records an error from mount or unmount operation
@@ -95,18 +96,21 @@ func RecursiveUnmount(target string) error {
 		return len(mounts[i].Mountpoint) > len(mounts[j].Mountpoint)
 	})
 
+	var suberr error
 	for i, m := range mounts {
-		logrus.Debugf("Trying to unmount %s", m.Mountpoint)
 		err = unmount(m.Mountpoint, mntDetach)
 		if err != nil {
 			if i == len(mounts)-1 { // last mount
-				return err
+				return fmt.Errorf("%w (possible cause: %s)", err, suberr)
 			}
-			// This is some submount, we can ignore this error for now, the final unmount will fail if this is a real problem
-			logrus.WithError(err).Warnf("Failed to unmount submount %s", m.Mountpoint)
+			// This is a submount, we can ignore the error for now,
+			// the final unmount will fail if this is a real problem.
+			// With that in mind, the _first_ failed unmount error
+			// might be the real error cause, so let's keep it.
+			if suberr == nil {
+				suberr = err
+			}
 		}
-
-		logrus.Debugf("Unmounted %s", m.Mountpoint)
 	}
 	return nil
 }
