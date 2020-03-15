@@ -3,6 +3,7 @@
 package mount
 
 import (
+	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -44,21 +45,20 @@ func TestMounted(t *testing.T) {
 		targetPath = path.Join(targetDir, "file.txt")
 	)
 
-	os.Mkdir(sourceDir, 0777)
-	os.Mkdir(targetDir, 0777)
-
-	f, err := os.Create(sourcePath)
-	if err != nil {
+	if err := os.Mkdir(sourceDir, 0777); err != nil {
 		t.Fatal(err)
 	}
-	f.WriteString("hello")
-	f.Close()
-
-	f, err = os.Create(targetPath)
-	if err != nil {
+	if err := os.Mkdir(targetDir, 0777); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+
+	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ioutil.WriteFile(targetPath, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := Mount(sourceDir, targetDir, "none", "bind,rw"); err != nil {
 		t.Fatal(err)
@@ -99,21 +99,20 @@ func TestMountReadonly(t *testing.T) {
 		targetPath = path.Join(targetDir, "file.txt")
 	)
 
-	os.Mkdir(sourceDir, 0777)
-	os.Mkdir(targetDir, 0777)
-
-	f, err := os.Create(sourcePath)
-	if err != nil {
+	if err := os.Mkdir(sourceDir, 0777); err != nil {
 		t.Fatal(err)
 	}
-	f.WriteString("hello")
-	f.Close()
-
-	f, err = os.Create(targetPath)
-	if err != nil {
+	if err := os.Mkdir(targetDir, 0777); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+
+	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ioutil.WriteFile(targetPath, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := Mount(sourceDir, targetDir, "none", "bind,ro"); err != nil {
 		t.Fatal(err)
@@ -124,8 +123,7 @@ func TestMountReadonly(t *testing.T) {
 		}
 	}()
 
-	_, err = os.OpenFile(targetPath, os.O_RDWR, 0777)
-	if err == nil {
+	if err := ioutil.WriteFile(targetPath, []byte("hello"), 0644); err == nil {
 		t.Fatal("Should not be able to open a ro file as rw")
 	}
 }
