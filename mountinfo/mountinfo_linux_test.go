@@ -616,6 +616,12 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 			valid: true,
 			exp:   &Info{Mountpoint: "/mnt/point", Fstype: "aufs", Source: "none", Optional: "shared:123 extra:tag what:ever"},
 		},
+		{
+			name:  "empty source field (kernel < 5.1 bug)",
+			entry: `279 23 0:108 / /tmp/bb rw,relatime - tmpfs  rw`,
+			valid: true,
+			exp:   &Info{Mountpoint: "/tmp/bb", Fstype: "tmpfs", Source: "", VfsOpts: "rw"},
+		},
 	}
 
 	for _, tc := range testcases {
