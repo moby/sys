@@ -6,7 +6,8 @@ import "strings"
 // used to filter out mountinfo entries we're not interested in.
 //
 // It takes a pointer to the Info struct (not fully populated,
-// currently only Mountpoint is filled in), and returns two booleans:
+// currently only Mountpoint and Fstype are filled in),
+// and returns two booleans:
 //
 //  - skip: true if the entry should be skipped
 //  - stop: true if parsing should be stopped after the entry
