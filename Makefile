@@ -6,13 +6,12 @@ all: lint test
 
 .PHONY: test
 test:
-	for p in $(PACKAGES); do \
-		(cd $$p && go test -v .); \
-	done
+	go test -v ./...
 
 .PHONY: lint
 lint: $(BINDIR)/golangci-lint
 	$(BINDIR)/golangci-lint version
+	go mod download ./...
 	for p in $(PACKAGES); do \
 		(cd $$p && go mod download \
 		&& ../$(BINDIR)/golangci-lint run); \
