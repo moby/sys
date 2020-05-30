@@ -1,6 +1,9 @@
 package mountinfo
 
-import "strings"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // FilterFunc is a type defining a callback function for GetMount(),
 // used to filter out mountinfo entries we're not interested in,
@@ -26,6 +29,11 @@ func PrefixFilter(prefix string) FilterFunc {
 // SingleEntryFilter looks for a specific entry
 func SingleEntryFilter(mp string) FilterFunc {
 	return func(m *Info) (bool, bool) {
+		// Resolve any symlinks in mountpoint, kernel would do the same and use the resolved path in /proc/<pid>/mountinfo.
+		if resolved, err := filepath.EvalSymlinks(mp); err == nil {
+			mp = resolved
+		}
+
 		if m.Mountpoint == mp {
 			return false, true // don't skip, stop now
 		}
