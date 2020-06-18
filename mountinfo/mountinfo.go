@@ -18,6 +18,10 @@ func GetMountsFromReader(reader io.Reader, f FilterFunc) ([]*Info, error) {
 
 // Mounted determines if a specified mountpoint has been mounted.
 // On Linux it looks at /proc/self/mountinfo.
+//
+// The argument must be an absolute path, with all symlinks resolved, and clean.
+// One way to ensure it is to process the path using filepath.EvalSymlinks before
+// calling this function.
 func Mounted(mountpoint string) (bool, error) {
 	entries, err := GetMounts(SingleEntryFilter(mountpoint))
 	if err != nil {
