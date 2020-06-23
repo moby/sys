@@ -75,8 +75,14 @@ func parseInfoFile(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Parsing '%s' failed: mount point: %w", fields[4], err)
 		}
-		p.Fstype = fields[sepIdx+1]
-		p.Source = fields[sepIdx+2]
+		p.Fstype, err = unescape(fields[sepIdx+1])
+		if err != nil {
+			return nil, fmt.Errorf("Parsing '%s' failed: fstype: %w", fields[sepIdx+1], err)
+		}
+		p.Source, err = unescape(fields[sepIdx+2])
+		if err != nil {
+			return nil, fmt.Errorf("Parsing '%s' failed: source: %w", fields[sepIdx+2], err)
+		}
 		p.VfsOpts = fields[sepIdx+3]
 
 		// Run a filter soon so we can skip parsing/adding entries
