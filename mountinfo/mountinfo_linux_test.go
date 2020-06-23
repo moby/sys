@@ -422,7 +422,8 @@ const (
 99 15 8:33 / /media/REMOVE\040ME rw,nosuid,nodev,relatime - fuseblk /dev/sdc1 rw,user_id=0,group_id=0,allow_other,blksize=4096`
 
 	mountInfoWithSpaces = `486 28 252:1 / /mnt/foo\040bar rw,relatime shared:243 - ext4 /dev/vda1 rw,data=ordered
-31 21 0:23 / /DATA/foo_bla_bla rw,relatime - cifs //foo/BLA\040BLA\040BLA/ rw,sec=ntlm,cache=loose,unc=\\foo\BLA BLA BLA,username=my_login,domain=mydomain.com,uid=12345678,forceuid,gid=12345678,forcegid,addr=10.1.30.10,file_mode=0755,dir_mode=0755,nounix,rsize=61440,wsize=65536,actimeo=1`
+31 21 0:23 / /DATA/foo_bla_bla rw,relatime - cifs //foo/BLA\040BLA\040BLA/ rw,sec=ntlm,cache=loose,unc=\\foo\BLA BLA BLA,username=my_login,domain=mydomain.com,uid=12345678,forceuid,gid=12345678,forcegid,addr=10.1.30.10,file_mode=0755,dir_mode=0755,nounix,rsize=61440,wsize=65536,actimeo=1
+649 94 259:5 /tmp/newline\012tab\011space\040backslash\134quote1'quote2" /tmp/newline\012tab\011space\040backslash\134quote1'quote2" rw,relatime shared:47 - ext4 /dev/nvme0n1p5 rw,seclabel`
 )
 
 func TestParseFedoraMountinfo(t *testing.T) {
@@ -510,6 +511,21 @@ func TestParseMountinfoWithSpaces(t *testing.T) {
 			Fstype:     "cifs",
 			Source:     `//foo/BLA\040BLA\040BLA/`,
 			VfsOpts:    `rw,sec=ntlm,cache=loose,unc=\\foo\BLA`,
+		},
+		{
+			ID:     649,
+			Parent: 94,
+			Major:  259,
+			Minor:  5,
+			Root: `/tmp/newline
+tab	space backslash\quote1'quote2"`,
+			Mountpoint: `/tmp/newline
+tab	space backslash\quote1'quote2"`,
+			Opts:     "rw,relatime",
+			Optional: "shared:47",
+			Fstype:   "ext4",
+			Source:   `/dev/nvme0n1p5`,
+			VfsOpts:  `rw,seclabel`,
 		},
 	}
 
@@ -654,4 +670,47 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 			t.Errorf("case %q: expected src %s, got %s", tc.name, tc.exp.Source, i.Source)
 		}
 	}
+}
+
+func TestUnescape(t *testing.T) {
+	testCases := []struct {
+		input, output string
+		isErr         bool
+	}{
+		{"", "", false},
+		{"/", "/", false},
+		{"/some/longer/path", "/some/longer/path", false},
+		{"/path\\040with\\040spaces", "/path with spaces", false},
+		{"/path/with\\134backslash", "/path/with\\backslash", false},
+		{"/tab\\011in/path", "/tab\tin/path", false},
+		{`/path/"with'quotes`, `/path/"with'quotes`, false},
+		{`/path/"with'quotes,\040space,\011tab`, `/path/"with'quotes, space,	tab`, false},
+		{`\12`, "", true},
+		{`\134`, `\`, false},
+		{`"'"'"'`, `"'"'"'`, false},
+		{`/\1345`, `/\5`, false},
+		{`/\12x`, "", true},
+		{`\0`, "", true},
+		{`\x`, "", true},
+		{"\\\\", "", true},
+	}
+
+	for _, tc := range testCases {
+		res, err := unescape(tc.input)
+		if tc.isErr == true {
+			if err == nil {
+				t.Errorf("Input %q, want error, got nil", tc.input)
+			}
+			// no more checks
+			continue
+		}
+		if res != tc.output {
+			t.Errorf("Input %q, want %q, got %q", tc.input, tc.output, res)
+		}
+		if err != nil {
+			t.Errorf("Input %q, want nil, got error %v", tc.input, err)
+			continue
+		}
+	}
+
 }
