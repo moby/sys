@@ -10,14 +10,7 @@ func TestGetMounts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	root := false
-	for _, entry := range mounts {
-		if entry.Mountpoint == "/" {
-			root = true
-		}
-	}
-
-	if !root {
-		t.Fatal("/ should be mounted at least")
+	if len(mounts) < 2 {
+		t.Fatalf("should have at least two mounts, got %d: %+v", len(mounts), mounts)
 	}
 }
