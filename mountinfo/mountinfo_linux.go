@@ -193,10 +193,10 @@ func unescape(path string) (string, error) {
 		case '0', '1', '2', '3', '4', '5', '6', '7':
 			v := c - '0'
 			for j := 2; j < 4; j++ { // one digit already; two more
-				x := s[j] - '0'
-				if x < 0 || x > 7 {
+				if s[j] < '0' || s[j] > '7' {
 					return "", fmt.Errorf("bad escape sequence %q: not a digit", s[:3])
 				}
+				x := s[j] - '0'
 				v = (v << 3) | x
 			}
 			if v > 255 {
