@@ -1,3 +1,4 @@
+.SHELLFLAGS = -ec
 PACKAGES ?= mountinfo mount
 BINDIR ?= _build/bin
 
