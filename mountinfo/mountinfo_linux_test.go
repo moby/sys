@@ -509,7 +509,7 @@ func TestParseMountinfoWithSpaces(t *testing.T) {
 			Opts:       "rw,relatime",
 			Optional:   "",
 			Fstype:     "cifs",
-			Source:     `//foo/BLA\040BLA\040BLA/`,
+			Source:     `//foo/BLA BLA BLA/`,
 			VfsOpts:    `rw,sec=ntlm,cache=loose,unc=\\foo\BLA`,
 		},
 		{
