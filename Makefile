@@ -1,9 +1,11 @@
 .SHELLFLAGS = -ec
 PACKAGES ?= mountinfo mount
 BINDIR ?= _build/bin
+CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
+	freebsd/amd64 darwin/amd64 darwin/arm64 windows/amd64
 
 .PHONY: all
-all: lint test
+all: lint test cross
 
 .PHONY: test
 test:
@@ -24,3 +26,13 @@ $(BINDIR)/golangci-lint: $(BINDIR)
 
 $(BINDIR):
 	mkdir -p $(BINDIR)
+
+.PHONY: cross
+cross:
+	for osarch in $(CROSS); do \
+		export GOOS=$${osarch%/*} GOARCH=$${osarch#*/}; \
+		echo "# building for $$GOOS/$$GOARCH"; \
+		for p in $(PACKAGES); do \
+			(cd $$p	&& go build .); \
+		done; \
+	done
