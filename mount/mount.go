@@ -17,8 +17,8 @@ func Mount(device, target, mType, options string) error {
 	return mount(device, target, mType, uintptr(flag), data)
 }
 
-// Unmount lazily unmounts a filesystem on supported platforms, otherwise
-// does a normal unmount.
+// Unmount lazily unmounts a filesystem on supported platforms, otherwise does
+// a normal unmount.  If target is not a mount point, no error is returned.
 func Unmount(target string) error {
 	return unmount(target, mntDetach)
 }
