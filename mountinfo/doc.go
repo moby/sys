@@ -14,8 +14,7 @@
 // parse filters while reading mountinfo. A filter can skip some entries, or stop
 // processing the rest of the file once the needed information is found.
 //
-// For functions that have path as an argument (such as Mounted or various filters),
-// the argument must be
+// For mountinfo filters that accept path as an argument, it must be:
 //  - an absolute path;
 //  - having all symlinks resolved;
 //  - being cleaned.
