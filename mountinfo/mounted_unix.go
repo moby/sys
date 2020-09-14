@@ -11,8 +11,12 @@ import (
 
 func mountedByStat(path string) (bool, error) {
 	var st unix.Stat_t
-	err := unix.Lstat(path, &st)
-	if err != nil {
+
+	if err := unix.Lstat(path, &st); err != nil {
+		if err == unix.ENOENT {
+			// Treat ENOENT as "not mounted".
+			return false, nil
+		}
 		return false, &os.PathError{Op: "stat", Path: path, Err: err}
 	}
 	dev := st.Dev

@@ -16,6 +16,9 @@ func mountedByOpenat2(path string) (bool, error) {
 		Flags: unix.O_PATH | unix.O_CLOEXEC,
 	})
 	if err != nil {
+		if err == unix.ENOENT { // not a mount
+			return false, nil
+		}
 		return false, &os.PathError{Op: "openat2", Path: dir, Err: err}
 	}
 	fd, err := unix.Openat2(dirfd, last, &unix.OpenHow{
@@ -29,6 +32,8 @@ func mountedByOpenat2(path string) (bool, error) {
 		return false, nil
 	case unix.EXDEV: // definitely a mount
 		return true, nil
+	case unix.ENOENT: // not a mount
+		return false, nil
 	}
 	// not sure
 	return false, &os.PathError{Op: "openat2", Path: path, Err: err}
