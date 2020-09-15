@@ -1,6 +1,9 @@
 package mountinfo
 
-import "io"
+import (
+	"io"
+	"os"
+)
 
 // GetMounts retrieves a list of mounts for the current running process,
 // with an optional filter applied (use nil for no filter).
@@ -22,6 +25,10 @@ func GetMountsFromReader(reader io.Reader, f FilterFunc) ([]*Info, error) {
 // One way to ensure it is to process the path using filepath.Abs followed by
 // filepath.EvalSymlinks before calling this function.
 func Mounted(path string) (bool, error) {
+	// root is always mounted
+	if path == string(os.PathSeparator) {
+		return true, nil
+	}
 	return mounted(path)
 }
 
