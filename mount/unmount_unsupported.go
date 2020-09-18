@@ -2,7 +2,7 @@
 
 package mount
 
-func unmountBare(_ string, _ int) error {
+func recursiveUnmount(_ string) error {
 	panic("Not implemented")
 }
 
