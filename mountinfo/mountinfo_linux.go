@@ -79,7 +79,7 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Parsing '%s' failed: mount point: %w", fields[4], err)
 		}
-		p.Fstype, err = unescape(fields[sepIdx+1])
+		p.FSType, err = unescape(fields[sepIdx+1])
 		if err != nil {
 			return nil, fmt.Errorf("Parsing '%s' failed: fstype: %w", fields[sepIdx+1], err)
 		}
@@ -87,7 +87,7 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Parsing '%s' failed: source: %w", fields[sepIdx+2], err)
 		}
-		p.VfsOpts = fields[sepIdx+3]
+		p.VFSOptions = fields[sepIdx+3]
 
 		// Run a filter early so we can skip parsing/adding entries
 		// the caller is not interested in
@@ -116,7 +116,7 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 			return nil, fmt.Errorf("Parsing '%s' failed: root: %w", fields[3], err)
 		}
 
-		p.Opts = fields[5]
+		p.Options = fields[5]
 
 		// zero or more optional fields
 		switch {

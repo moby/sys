@@ -465,11 +465,11 @@ func TestParseFedoraMountinfoFields(t *testing.T) {
 		Minor:      3,
 		Root:       "/",
 		Mountpoint: "/proc",
-		Opts:       "rw,nosuid,nodev,noexec,relatime",
+		Options:    "rw,nosuid,nodev,noexec,relatime",
 		Optional:   "shared:5",
-		Fstype:     "proc",
+		FSType:     "proc",
 		Source:     "proc",
-		VfsOpts:    "rw",
+		VFSOptions: "rw",
 	}
 
 	if *infos[0] != mi {
@@ -491,11 +491,11 @@ func TestParseMountinfoWithSpaces(t *testing.T) {
 			Minor:      1,
 			Root:       "/",
 			Mountpoint: "/mnt/foo bar",
-			Opts:       "rw,relatime",
+			Options:    "rw,relatime",
 			Optional:   "shared:243",
-			Fstype:     "ext4",
+			FSType:     "ext4",
 			Source:     "/dev/vda1",
-			VfsOpts:    "rw,data=ordered",
+			VFSOptions: "rw,data=ordered",
 		},
 		{
 			ID:         31,
@@ -504,11 +504,11 @@ func TestParseMountinfoWithSpaces(t *testing.T) {
 			Minor:      23,
 			Root:       "/",
 			Mountpoint: "/DATA/foo_bla_bla",
-			Opts:       "rw,relatime",
+			Options:    "rw,relatime",
 			Optional:   "",
-			Fstype:     "cifs",
+			FSType:     "cifs",
 			Source:     `//foo/BLA BLA BLA/`,
-			VfsOpts:    `rw,sec=ntlm,cache=loose,unc=\\foo\BLA`,
+			VFSOptions: `rw,sec=ntlm,cache=loose,unc=\\foo\BLA`,
 		},
 		{
 			ID:     649,
@@ -519,11 +519,11 @@ func TestParseMountinfoWithSpaces(t *testing.T) {
 tab	space backslash\quote1'quote2"`,
 			Mountpoint: `/tmp/newline
 tab	space backslash\quote1'quote2"`,
-			Opts:     "rw,relatime",
-			Optional: "shared:47",
-			Fstype:   "ext4",
-			Source:   `/dev/nvme0n1p5`,
-			VfsOpts:  `rw,seclabel`,
+			Options:    "rw,relatime",
+			Optional:   "shared:47",
+			FSType:     "ext4",
+			Source:     `/dev/nvme0n1p5`,
+			VFSOptions: `rw,seclabel`,
 		},
 	}
 
@@ -616,25 +616,25 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 			name:  "extra fields at the end", // which we currently discard
 			entry: `251 15 0:3573 / /mnt/point rw,relatime - aufs none rw,unc=buggy but we cope`,
 			valid: true,
-			exp:   &Info{Mountpoint: "/mnt/point", Fstype: "aufs", Source: "none"},
+			exp:   &Info{Mountpoint: "/mnt/point", FSType: "aufs", Source: "none"},
 		},
 		{
 			name:  "one optional field",
 			entry: `251 15 0:3573 / /mnt/point rw,relatime shared:123 - aufs none rw`,
 			valid: true,
-			exp:   &Info{Mountpoint: "/mnt/point", Fstype: "aufs", Source: "none", Optional: "shared:123 extra:tag what:ever"},
+			exp:   &Info{Mountpoint: "/mnt/point", FSType: "aufs", Source: "none", Optional: "shared:123 extra:tag what:ever"},
 		},
 		{
 			name:  "extra optional fields", // which we carefully gather
 			entry: `251 15 0:3573 / /mnt/point rw,relatime shared:123 extra:tag what:ever key:value - aufs none rw`,
 			valid: true,
-			exp:   &Info{Mountpoint: "/mnt/point", Fstype: "aufs", Source: "none", Optional: "shared:123 extra:tag what:ever"},
+			exp:   &Info{Mountpoint: "/mnt/point", FSType: "aufs", Source: "none", Optional: "shared:123 extra:tag what:ever"},
 		},
 		{
 			name:  "empty source field (kernel < 5.1 bug)",
 			entry: `279 23 0:108 / /tmp/bb rw,relatime - tmpfs  rw`,
 			valid: true,
-			exp:   &Info{Mountpoint: "/tmp/bb", Fstype: "tmpfs", Source: "", VfsOpts: "rw"},
+			exp:   &Info{Mountpoint: "/tmp/bb", FSType: "tmpfs", Source: "", VFSOptions: "rw"},
 		},
 	}
 
@@ -661,8 +661,8 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 		if tc.exp.Mountpoint != "" && tc.exp.Mountpoint != i.Mountpoint {
 			t.Errorf("case %q: expected mp %s, got %s", tc.name, tc.exp.Mountpoint, i.Mountpoint)
 		}
-		if tc.exp.Fstype != "" && tc.exp.Fstype != i.Fstype {
-			t.Errorf("case %q: expected fs %s, got %s", tc.name, tc.exp.Fstype, i.Fstype)
+		if tc.exp.FSType != "" && tc.exp.FSType != i.FSType {
+			t.Errorf("case %q: expected fs %s, got %s", tc.name, tc.exp.FSType, i.FSType)
 		}
 		if tc.exp.Source != "" && tc.exp.Source != i.Source {
 			t.Errorf("case %q: expected src %s, got %s", tc.name, tc.exp.Source, i.Source)

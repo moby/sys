@@ -49,7 +49,7 @@ func ParentsFilter(path string) FilterFunc {
 func FstypeFilter(fstype ...string) FilterFunc {
 	return func(m *Info) (bool, bool) {
 		for _, t := range fstype {
-			if m.Fstype == t {
+			if m.FSType == t {
 				return false, false // don't skip, keep going
 			}
 		}
