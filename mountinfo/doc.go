@@ -1,6 +1,6 @@
 // Package mountinfo provides a set of functions to retrieve information about OS mounts.
 //
-// Currently it supports Linux. For historical reasons, there is also some support for FreeBSD,
+// Currently it supports Linux. For historical reasons, there is also some support for FreeBSD and OpenBSD,
 // and a shallow implementation for Windows, but in general this is Linux-only package, so
 // the rest of the document only applies to Linux, unless explicitly specified otherwise.
 //

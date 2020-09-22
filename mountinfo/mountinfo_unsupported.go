@@ -1,4 +1,4 @@
-// +build !windows,!linux,!freebsd freebsd,!cgo
+// +build !windows,!linux,!freebsd,!openbsd freebsd,!cgo openbsd,!cgo
 
 package mountinfo
 
