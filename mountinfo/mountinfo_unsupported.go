@@ -15,7 +15,7 @@ func parseMountTable(_ FilterFunc) ([]*Info, error) {
 }
 
 func parseInfoFile(_ io.Reader, f FilterFunc) ([]*Info, error) {
-	return parseMountTable(f)
+	return nil, errNotImplemented
 }
 
 func mounted(path string) (bool, error) {
