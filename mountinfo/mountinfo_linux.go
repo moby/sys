@@ -11,6 +11,14 @@ import (
 	"strings"
 )
 
+// GetMountsFromReader retrieves a list of mounts from the
+// reader provided, with an optional filter applied (use nil
+// for no filter). This can be useful in tests or benchmarks
+// that provide a fake mountinfo data.
+func GetMountsFromReader(reader io.Reader, f FilterFunc) ([]*Info, error) {
+	return parseInfoFile(reader, f)
+}
+
 func parseInfoFile(r io.Reader, filter FilterFunc) ([]*Info, error) {
 	s := bufio.NewScanner(r)
 	out := []*Info{}
