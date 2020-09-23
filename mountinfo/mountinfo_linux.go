@@ -85,7 +85,7 @@ func parseInfoFile(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		}
 		p.VfsOpts = fields[sepIdx+3]
 
-		// Run a filter soon so we can skip parsing/adding entries
+		// Run a filter early so we can skip parsing/adding entries
 		// the caller is not interested in
 		var skip, stop bool
 		if filter != nil {
@@ -173,7 +173,7 @@ func unescape(path string) (string, error) {
 	}
 
 	// The following code is UTF-8 transparent as it only looks for some
-	// specific characters (backslach and 0..7) with values < utf8.RuneSelf,
+	// specific characters (backslash and 0..7) with values < utf8.RuneSelf,
 	// and everything else is passed through as is.
 	buf := make([]byte, len(path))
 	bufLen := 0
