@@ -44,5 +44,4 @@
 //
 // 5. To find the mount point root of a specific directory. You can perform os.Stat()
 //    on the directory and traverse up until the Dev field of a parent directory differs.
-
 package mountinfo
