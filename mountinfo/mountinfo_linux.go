@@ -11,7 +11,13 @@ import (
 	"strings"
 )
 
-func parseInfoFile(r io.Reader, filter FilterFunc) ([]*Info, error) {
+// GetMountsFromReader retrieves a list of mounts from the
+// reader provided, with an optional filter applied (use nil
+// for no filter). This can be useful in tests or benchmarks
+// that provide a fake mountinfo data.
+//
+// This function is Linux-specific.
+func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 	s := bufio.NewScanner(r)
 	out := []*Info{}
 	var err error
@@ -141,7 +147,7 @@ func parseMountTable(filter FilterFunc) ([]*Info, error) {
 	}
 	defer f.Close()
 
-	return parseInfoFile(f, filter)
+	return GetMountsFromReader(f, filter)
 }
 
 // PidMountInfo collects the mounts for a specific process ID. If the process
@@ -154,7 +160,7 @@ func PidMountInfo(pid int) ([]*Info, error) {
 	}
 	defer f.Close()
 
-	return parseInfoFile(f, nil)
+	return GetMountsFromReader(f, nil)
 }
 
 // A few specific characters in mountinfo path entries (root and mountpoint)

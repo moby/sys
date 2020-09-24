@@ -428,7 +428,7 @@ const (
 
 func TestParseFedoraMountinfo(t *testing.T) {
 	r := bytes.NewBuffer([]byte(fedoraMountinfo))
-	_, err := parseInfoFile(r, nil)
+	_, err := GetMountsFromReader(r, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +436,7 @@ func TestParseFedoraMountinfo(t *testing.T) {
 
 func TestParseUbuntuMountinfo(t *testing.T) {
 	r := bytes.NewBuffer([]byte(ubuntuMountinfo))
-	_, err := parseInfoFile(r, nil)
+	_, err := GetMountsFromReader(r, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +444,7 @@ func TestParseUbuntuMountinfo(t *testing.T) {
 
 func TestParseGentooMountinfo(t *testing.T) {
 	r := bytes.NewBuffer([]byte(gentooMountinfo))
-	_, err := parseInfoFile(r, nil)
+	_, err := GetMountsFromReader(r, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,7 +452,7 @@ func TestParseGentooMountinfo(t *testing.T) {
 
 func TestParseFedoraMountinfoFields(t *testing.T) {
 	r := bytes.NewBuffer([]byte(fedoraMountinfo))
-	infos, err := parseInfoFile(r, nil)
+	infos, err := GetMountsFromReader(r, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,7 +481,7 @@ func TestParseFedoraMountinfoFields(t *testing.T) {
 
 func TestParseMountinfoWithSpaces(t *testing.T) {
 	r := bytes.NewBuffer([]byte(mountInfoWithSpaces))
-	infos, err := parseInfoFile(r, nil)
+	infos, err := GetMountsFromReader(r, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -558,7 +558,7 @@ func TestParseMountinfoFilters(t *testing.T) {
 	var r bytes.Reader
 	for _, tc := range cases {
 		r.Reset([]byte(fedoraMountinfo))
-		infos, err := parseInfoFile(&r, tc.filter)
+		infos, err := GetMountsFromReader(&r, tc.filter)
 		if err != nil {
 			t.Error(err)
 			continue
@@ -575,7 +575,7 @@ func BenchmarkParseMountinfo(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		r := bytes.NewReader(buf)
-		_, err := parseInfoFile(r, PrefixFilter("/sys"))
+		_, err := GetMountsFromReader(r, PrefixFilter("/sys"))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -642,7 +642,7 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 
 	for _, tc := range testcases {
 		r := bytes.NewBufferString(tc.entry)
-		info, err := parseInfoFile(r, nil)
+		info, err := GetMountsFromReader(r, nil)
 		if !tc.valid {
 			if err == nil {
 				t.Errorf("case %q: expected error, got nil", tc.name)
