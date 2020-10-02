@@ -148,9 +148,14 @@ func parseMountTable(filter FilterFunc) ([]*Info, error) {
 	return GetMountsFromReader(f, filter)
 }
 
-// PidMountInfo collects the mounts for a specific process ID. If the process
-// ID is unknown, it is better to use `GetMounts` which will inspect
-// "/proc/self/mountinfo" instead.
+// PidMountInfo retrieves the list of mounts from a given process' mount
+// namespace. Unless there is a need to get mounts from a mount namespace
+// different from that of a calling process, use GetMounts.
+//
+// This function is Linux-specific.
+//
+// Deprecated: this will be removed before v1; use GetMountsFromReader with
+// opened /proc/<pid>/mountinfo as an argument instead.
 func PidMountInfo(pid int) ([]*Info, error) {
 	f, err := os.Open(fmt.Sprintf("/proc/%d/mountinfo", pid))
 	if err != nil {
