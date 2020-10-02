@@ -7,8 +7,8 @@ import "strings"
 // and/or stop further processing if we found what we wanted.
 //
 // It takes a pointer to the Info struct (not fully populated,
-// currently only Mountpoint, Fstype, Source, and (on Linux)
-// VfsOpts are filled in), and returns two booleans:
+// currently only Mountpoint, FSType, Source, and (on Linux)
+// VFSOptions are filled in), and returns two booleans:
 //
 //  - skip: true if the entry should be skipped
 //  - stop: true if parsing should be stopped after the entry
@@ -45,8 +45,8 @@ func ParentsFilter(path string) FilterFunc {
 	}
 }
 
-// FstypeFilter returns all entries that match provided fstype(s).
-func FstypeFilter(fstype ...string) FilterFunc {
+// FSTypeFilter returns all entries that match provided fstype(s).
+func FSTypeFilter(fstype ...string) FilterFunc {
 	return func(m *Info) (bool, bool) {
 		for _, t := range fstype {
 			if m.FSType == t {
