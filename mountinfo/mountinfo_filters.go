@@ -45,8 +45,8 @@ func ParentsFilter(path string) FilterFunc {
 	}
 }
 
-// FstypeFilter returns all entries that match provided fstype(s).
-func FstypeFilter(fstype ...string) FilterFunc {
+// FSTypeFilter returns all entries that match provided fstype(s).
+func FSTypeFilter(fstype ...string) FilterFunc {
 	return func(m *Info) (bool, bool) {
 		for _, t := range fstype {
 			if m.FSType == t {
