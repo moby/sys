@@ -61,12 +61,18 @@ func RecursiveUnmount(target string) error {
 		return len(mounts[i].Mountpoint) > len(mounts[j].Mountpoint)
 	})
 
-	var suberr error
+	var (
+		suberr    error
+		lastMount = len(mounts) - 1
+	)
 	for i, m := range mounts {
 		err = Unmount(m.Mountpoint)
 		if err != nil {
-			if i == len(mounts)-1 { // last mount
-				return fmt.Errorf("%w (possible cause: %s)", err, suberr)
+			if i == lastMount {
+				if suberr != nil {
+					return fmt.Errorf("%w (possible cause: %s)", err, suberr)
+				}
+				return err
 			}
 			// This is a submount, we can ignore the error for now,
 			// the final unmount will fail if this is a real problem.
