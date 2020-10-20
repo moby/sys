@@ -18,11 +18,9 @@ import (
 func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 	s := bufio.NewScanner(r)
 	out := []*Info{}
-	var err error
 	for s.Scan() {
-		if err = s.Err(); err != nil {
-			return nil, err
-		}
+		var err error
+
 		/*
 		   See http://man7.org/linux/man-pages/man5/proc.5.html
 
@@ -132,6 +130,9 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		if stop {
 			break
 		}
+	}
+	if err := s.Err(); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
