@@ -72,7 +72,6 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 
 		p := &Info{}
 
-		// Fill in the fields that a filter might check
 		p.Mountpoint, err = unescape(fields[4])
 		if err != nil {
 			return nil, fmt.Errorf("Parsing '%s' failed: mount point: %w", fields[4], err)
@@ -86,18 +85,6 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 			return nil, fmt.Errorf("Parsing '%s' failed: source: %w", fields[sepIdx+2], err)
 		}
 		p.VFSOptions = fields[sepIdx+3]
-
-		// Run a filter early so we can skip parsing/adding entries
-		// the caller is not interested in
-		var skip, stop bool
-		if filter != nil {
-			skip, stop = filter(p)
-			if skip {
-				continue
-			}
-		}
-
-		// Fill in the rest of the fields
 
 		// ignore any numbers parsing errors, as there should not be any
 		p.ID, _ = strconv.Atoi(fields[0])
@@ -124,6 +111,15 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 			p.Optional = fields[6]
 		default:
 			p.Optional = strings.Join(fields[6:sepIdx-1], " ")
+		}
+
+		// Run the filter after parsing all of the fields.
+		var skip, stop bool
+		if filter != nil {
+			skip, stop = filter(p)
+			if skip {
+				continue
+			}
 		}
 
 		out = append(out, p)
