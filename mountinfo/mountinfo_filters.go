@@ -6,9 +6,8 @@ import "strings"
 // used to filter out mountinfo entries we're not interested in,
 // and/or stop further processing if we found what we wanted.
 //
-// It takes a pointer to the Info struct (not fully populated,
-// currently only Mountpoint, FSType, Source, and (on Linux)
-// VFSOptions are filled in), and returns two booleans:
+// It takes a pointer to the Info struct (fully populated with all available
+// fields on the GOOS platform), and returns two booleans:
 //
 // skip: true if the entry should be skipped;
 //

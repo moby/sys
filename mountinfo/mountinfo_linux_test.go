@@ -477,6 +477,33 @@ func TestParseFedoraMountinfoFields(t *testing.T) {
 	}
 }
 
+func TestParseFedoraMountinfoFilterFields(t *testing.T) {
+	r := bytes.NewBuffer([]byte(fedoraMountinfo))
+	_, err := GetMountsFromReader(r, func(info *Info) (skip bool, stop bool) {
+		mi := Info{
+			ID:         15,
+			Parent:     35,
+			Major:      0,
+			Minor:      3,
+			Root:       "/",
+			Mountpoint: "/proc",
+			Options:    "rw,nosuid,nodev,noexec,relatime",
+			Optional:   "shared:5",
+			FSType:     "proc",
+			Source:     "proc",
+			VFSOptions: "rw",
+		}
+		if *info != mi {
+			t.Fatalf("expected %#v, got %#v", mi, *info)
+		}
+		// Only match the first entry as in TestParseFedoraMountinfoFields.
+		return false, true
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestParseMountinfoWithSpaces(t *testing.T) {
 	r := bytes.NewBuffer([]byte(mountInfoWithSpaces))
 	infos, err := GetMountsFromReader(r, nil)
