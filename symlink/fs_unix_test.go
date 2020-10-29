@@ -24,7 +24,7 @@ func makeFs(tmpdir string, fs []dirOrLink) error {
 	for _, s := range fs {
 		s.path = filepath.Join(tmpdir, s.path)
 		if s.target == "" {
-			os.MkdirAll(s.path, 0755)
+			_ = os.MkdirAll(s.path, 0755)
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(s.path), 0755); err != nil {
@@ -53,11 +53,8 @@ func testSymlink(tmpdir, path, expected, scope string) error {
 }
 
 func TestFollowSymlinkAbsolute(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkAbsolute")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/a/d", target: "/b"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -67,11 +64,9 @@ func TestFollowSymlinkAbsolute(t *testing.T) {
 }
 
 func TestFollowSymlinkRelativePath(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkRelativePath")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
+
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/i", target: "a"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -81,11 +76,9 @@ func TestFollowSymlinkRelativePath(t *testing.T) {
 }
 
 func TestFollowSymlinkSkipSymlinksOutsideScope(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkSkipSymlinksOutsideScope")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
+
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "linkdir", target: "realdir"},
 		{path: "linkdir/foo/bar"},
@@ -104,11 +97,9 @@ func TestFollowSymlinkInvalidScopePathPair(t *testing.T) {
 }
 
 func TestFollowSymlinkLastLink(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkLastLink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
+
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/a/d", target: "/b"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -118,11 +109,9 @@ func TestFollowSymlinkLastLink(t *testing.T) {
 }
 
 func TestFollowSymlinkRelativeLinkChangeScope(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkRelativeLinkChangeScope")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
+
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/a/e", target: "../b"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -137,11 +126,8 @@ func TestFollowSymlinkRelativeLinkChangeScope(t *testing.T) {
 }
 
 func TestFollowSymlinkDeepRelativeLinkChangeScope(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkDeepRelativeLinkChangeScope")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/a/f", target: "../../../../test"}}); err != nil {
 		t.Fatal(err)
@@ -161,11 +147,8 @@ func TestFollowSymlinkDeepRelativeLinkChangeScope(t *testing.T) {
 }
 
 func TestFollowSymlinkRelativeLinkChain(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkRelativeLinkChain")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	// avoid letting symlink g (pointed at by symlink h) take out of scope
 	// TODO: we should probably normalize to scope here because ../[....]/root
@@ -182,11 +165,8 @@ func TestFollowSymlinkRelativeLinkChain(t *testing.T) {
 }
 
 func TestFollowSymlinkBreakoutPath(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkBreakoutPath")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	// avoid letting symlink -> ../directory/file escape from scope
 	// normalize to "testdata/fs/j"
@@ -199,11 +179,8 @@ func TestFollowSymlinkBreakoutPath(t *testing.T) {
 }
 
 func TestFollowSymlinkToRoot(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkToRoot")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	// make sure we don't allow escaping to /
 	// normalize to dir
@@ -216,11 +193,8 @@ func TestFollowSymlinkToRoot(t *testing.T) {
 }
 
 func TestFollowSymlinkSlashDotdot(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkSlashDotdot")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 	tmpdir = filepath.Join(tmpdir, "dir", "subdir")
 
 	// make sure we don't allow escaping to /
@@ -234,11 +208,8 @@ func TestFollowSymlinkSlashDotdot(t *testing.T) {
 }
 
 func TestFollowSymlinkDotdot(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkDotdot")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 	tmpdir = filepath.Join(tmpdir, "dir", "subdir")
 
 	// make sure we stay in scope without leaking information
@@ -253,11 +224,8 @@ func TestFollowSymlinkDotdot(t *testing.T) {
 }
 
 func TestFollowSymlinkRelativePath2(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkRelativePath2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "bar/foo", target: "baz/target"}}); err != nil {
 		t.Fatal(err)
@@ -268,11 +236,8 @@ func TestFollowSymlinkRelativePath2(t *testing.T) {
 }
 
 func TestFollowSymlinkScopeLink(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkScopeLink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "root2"},
@@ -287,11 +252,8 @@ func TestFollowSymlinkScopeLink(t *testing.T) {
 }
 
 func TestFollowSymlinkRootScope(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkRootScope")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	expected, err := filepath.EvalSymlinks(tmpdir)
 	if err != nil {
@@ -321,11 +283,8 @@ func TestFollowSymlinkEmpty(t *testing.T) {
 }
 
 func TestFollowSymlinkCircular(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkCircular")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "root/foo", target: "foo"}}); err != nil {
 		t.Fatal(err)
@@ -347,11 +306,8 @@ func TestFollowSymlinkCircular(t *testing.T) {
 }
 
 func TestFollowSymlinkComplexChainWithTargetPathsContainingLinks(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkComplexChainWithTargetPathsContainingLinks")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "root2"},
@@ -371,11 +327,8 @@ func TestFollowSymlinkComplexChainWithTargetPathsContainingLinks(t *testing.T) {
 }
 
 func TestFollowSymlinkBreakoutNonExistent(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkBreakoutNonExistent")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "root/slash", target: "/"},
@@ -389,11 +342,8 @@ func TestFollowSymlinkBreakoutNonExistent(t *testing.T) {
 }
 
 func TestFollowSymlinkNoLexicalCleaning(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "TestFollowSymlinkNoLexicalCleaning")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir, cleanup := mkTempDir(t)
+	defer cleanup()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "root/sym", target: "/foo/bar"},
@@ -404,4 +354,13 @@ func TestFollowSymlinkNoLexicalCleaning(t *testing.T) {
 	if err := testSymlink(tmpdir, "root/hello", "root/foo/baz", "root"); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func mkTempDir(t *testing.T) (string, func()) {
+	t.Helper()
+	tmpdir, err := ioutil.TempDir("", t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tmpdir, func() { _ = os.RemoveAll(tmpdir) }
 }
