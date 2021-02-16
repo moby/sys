@@ -21,6 +21,23 @@ lint: $(BINDIR)/golangci-lint
 		&& ../$(BINDIR)/golangci-lint run); \
 	done
 
+HTML0FILT := \
+	sed -e 's|href="/lib/godoc/|href="|' | \
+	sed -e 's|href="\([a-z].*/\)"|href="\1index.html"|'
+
+HTML1FILT := \
+	sed -e 's|href="/lib/godoc/|href="../|'
+
+.PHONY: docs
+docs:
+	mkdir -p _docs
+	cp ~/go/src/golang.org/x/tools/godoc/static/style.css _docs/
+	~/go/bin/godoc -url pkg/github.com/moby/sys | $(HTML0FILT) > _docs/index.html
+	for p in $(PACKAGES); do \
+		mkdir -p _docs/$$p; \
+		~/go/bin/godoc -url pkg/github.com/moby/sys/$$p | $(HTML1FILT) > _docs/$$p/index.html; \
+	done
+
 $(BINDIR)/golangci-lint: $(BINDIR)
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINDIR) v1.31.0
 
