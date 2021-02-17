@@ -174,10 +174,20 @@ func cleanupMounts(t *testing.T, dir string, mounts []string) {
 	}
 }
 
-func TestMountedBy(t *testing.T) {
+func requireOpenat2(t *testing.T) {
+	t.Helper()
 	if os.Getuid() != 0 {
 		t.Skip("requires root")
 	}
+	fd, err := unix.Openat2(unix.AT_FDCWD, ".", &unix.OpenHow{Flags: unix.O_RDONLY})
+	if err != nil {
+		t.Skipf("openat2: %v (old kernel? need Linux 5.6+)", err)
+	}
+	unix.Close(fd)
+}
+
+func TestMountedBy(t *testing.T) {
+	requireOpenat2(t)
 
 	dir, mounts, err := prepareMounts(t)
 	defer cleanupMounts(t, dir, mounts)
@@ -224,11 +234,7 @@ func TestMountedBy(t *testing.T) {
 }
 
 func TestMountedByOpenat2VsMountinfo(t *testing.T) {
-	fd, err := unix.Openat2(unix.AT_FDCWD, ".", &unix.OpenHow{Flags: unix.O_RDONLY})
-	if err != nil {
-		t.Skipf("openat2: %v (old kernel? need Linux 5.6+)", err)
-	}
-	unix.Close(fd)
+	requireOpenat2(t)
 
 	mounts, err := GetMounts(nil)
 	if err != nil {
