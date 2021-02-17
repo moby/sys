@@ -21,3 +21,22 @@ jobs:
       run: make cross
     - name: Test
       run: make test
+
+  # some features, like openat2, require a newer kernel
+  fedora:
+    # nested virtualization is only available on macOS hosts
+    runs-on: macos-10.15
+    steps:
+      - uses: actions/checkout@v2
+      - name: prepare vagrant
+        run: |
+          ln -sf .ci/Vagrantfile.fedora33 Vagrantfile
+          # Retry if it fails (download.fedoraproject.org returns 404 sometimes)
+          vagrant up || vagrant up
+          vagrant ssh-config >> ~/.ssh/config
+
+      - name: system info
+        run: ssh default 'sh -exc "uname -a && df -T"'
+
+      - name: tests
+        run: ssh default 'cd /vagrant && sudo -E PATH=$PATH make test'
