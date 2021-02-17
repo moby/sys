@@ -3,14 +3,16 @@ PACKAGES ?= mountinfo mount symlink
 BINDIR ?= _build/bin
 CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
 	freebsd/amd64 openbsd/amd64 darwin/amd64 darwin/arm64 windows/amd64
+SUDO ?= sudo -n
 
 .PHONY: all
 all: lint test cross
 
 .PHONY: test
+test: RUN_VIA_SUDO = $(shell $(SUDO) true && echo -exec \"$(SUDO)\")
 test:
 	for p in $(PACKAGES); do \
-		(cd $$p && go test -v .); \
+		(cd $$p && go test $(RUN_VIA_SUDO) -v .); \
 	done
 
 .PHONY: lint

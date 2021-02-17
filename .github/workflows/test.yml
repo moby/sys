@@ -39,4 +39,4 @@ jobs:
         run: ssh default 'sh -exc "uname -a && df -T"'
 
       - name: tests
-        run: ssh default 'cd /vagrant && sudo -E PATH=$PATH make test'
+        run: ssh default 'cd /vagrant && make test'
