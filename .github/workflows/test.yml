@@ -14,10 +14,10 @@ jobs:
         go-version: ${{ matrix.go-version }}
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Test
-      run: make test
     - name: Lint
       run: make lint
     - name: Cross build
       if: ${{ runner.os == 'Linux' }}
       run: make cross
+    - name: Test
+      run: make test
