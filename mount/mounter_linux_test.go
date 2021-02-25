@@ -199,7 +199,9 @@ func validateMount(t *testing.T, mnt string, opts, optional, vfs string) {
 			if mi.VFSOptions != "" {
 				for _, opt := range strings.Split(mi.VFSOptions, ",") {
 					opt = clean(opt)
-					if !has(wantedVFS, opt) && opt != "seclabel" { // can be added by selinux
+					if !has(wantedVFS, opt) &&
+						opt != "seclabel" && // can be added by selinux
+						opt != "inode64" && opt != "inode32" { // can be added by kernel 5.9+
 						t.Errorf("unexpected vfs option %q, expected %q", opt, vfs)
 					}
 					delete(wantedVFS, opt)
