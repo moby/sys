@@ -6,13 +6,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/moby/sys/mountinfo"
 )
 
 func TestMountOptionsParsing(t *testing.T) {
-	options := "noatime,ro,size=10k"
+	options := "noatime,ro,noexec,size=10k"
 
 	flag, data := parseOptions(options)
 
@@ -20,10 +21,10 @@ func TestMountOptionsParsing(t *testing.T) {
 		t.Fatalf("Expected size=10 got %s", data)
 	}
 
-	expectedFlag := NOATIME | RDONLY
+	expected := NOATIME | RDONLY | NOEXEC
 
-	if flag != expectedFlag {
-		t.Fatalf("Expected %d got %d", expectedFlag, flag)
+	if flag != expected {
+		t.Fatalf("Expected %d got %d", expected, flag)
 	}
 }
 
@@ -81,6 +82,59 @@ func TestMounted(t *testing.T) {
 	}
 }
 
+func TestMountTmpfsOptions(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root required")
+	}
+
+	testCases := []struct {
+		opts       string
+		expected   string
+		unexpected string
+	}{
+		{
+			opts:       "exec",
+			unexpected: "noexec",
+		},
+		{
+			opts:       "noexec",
+			expected:   "noexec",
+			unexpected: "exec",
+		},
+	}
+
+	target := path.Join(os.TempDir(), "mount-tmpfs-tests-"+t.Name())
+	if err := os.MkdirAll(target, 0777); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(target)
+
+	for _, tc := range testCases {
+		t.Run(tc.opts, func(t *testing.T) {
+			if err := Mount("tmpfs", target, "tmpfs", tc.opts); err != nil {
+				t.Fatal(err)
+			}
+			defer ensureUnmount(t, target)
+
+			mounts, err := mountinfo.GetMounts(mountinfo.SingleEntryFilter(target))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(mounts) != 1 {
+				t.Fatal("Mount point ", target, " not found")
+			}
+			entry := mounts[0]
+			opts := "," + entry.Options + ","
+			if tc.expected != "" && !strings.Contains(opts, ","+tc.expected+",") {
+				t.Fatal("Expected option ", tc.expected, " missing from ", entry.Options)
+			}
+			if tc.unexpected != "" && strings.Contains(opts, ","+tc.unexpected+",") {
+				t.Fatal("Unexpected option ", tc.unexpected, " in ", entry.Options)
+			}
+		})
+	}
+}
+
 func TestMountReadonly(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("root required")
@@ -129,8 +183,8 @@ func TestMountReadonly(t *testing.T) {
 }
 
 func TestMergeTmpfsOptions(t *testing.T) {
-	options := []string{"noatime", "ro", "size=10k", "defaults", "atime", "defaults", "rw", "rprivate", "size=1024k", "slave"}
-	expected := []string{"atime", "rw", "size=1024k", "slave"}
+	options := []string{"noatime", "ro", "size=10k", "defaults", "noexec", "atime", "defaults", "rw", "rprivate", "size=1024k", "slave", "exec"}
+	expected := []string{"atime", "rw", "size=1024k", "slave", "exec"}
 	merged, err := MergeTmpfsOptions(options)
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +198,7 @@ func TestMergeTmpfsOptions(t *testing.T) {
 		}
 	}
 
-	options = []string{"noatime", "ro", "size=10k", "atime", "rw", "rprivate", "size=1024k", "slave", "size"}
+	options = []string{"noatime", "ro", "size=10k", "atime", "rw", "rprivate", "size=1024k", "slave", "size", "exec"}
 	_, err = MergeTmpfsOptions(options)
 	if err == nil {
 		t.Fatal("Expected error got nil")
