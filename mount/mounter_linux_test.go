@@ -47,6 +47,8 @@ func TestMount(t *testing.T) {
 	}{
 		// No options
 		{"tmpfs", "tmpfs", "", "", "", ""},
+		// tmpfs mount with noexec set
+		{"tmpfs", "tmpfs", "noexec", "noexec", "", ""},
 		// Default rw / ro test
 		{source, "", "bind", "", "", ""},
 		{source, "", "bind,private", "", "", ""},
