@@ -204,3 +204,49 @@ func TestMergeTmpfsOptions(t *testing.T) {
 		t.Fatal("Expected error got nil")
 	}
 }
+
+func TestRecursiveUnmountTooGreedy(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root required")
+	}
+
+	tmp, err := ioutil.TempDir("", t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	// Create a bunch of tmpfs mounts. Make sure "dir" itself is not
+	// a mount point, or we'll hit the fast path in RecursiveUnmount.
+	dirs := []string{"dir-other", "dir/subdir1", "dir/subdir1/subsub", "dir/subdir2/subsub"}
+	for _, d := range dirs {
+		dir := path.Join(tmp, d)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := Mount("tmpfs", dir, "tmpfs", ""); err != nil {
+			t.Fatal(err)
+		}
+		//nolint:errcheck
+		defer Unmount(dir)
+	}
+	// sanity check
+	mounted, err := mountinfo.Mounted(path.Join(tmp, "dir-other"))
+	if err != nil {
+		t.Fatalf("[pre-check] error from mountinfo.mounted: %v", err)
+	}
+	if !mounted {
+		t.Fatal("[pre-check] expected dir-other to be mounted, but it's not")
+	}
+	// Unmount dir, make sure dir-other is still mounted.
+	if err := RecursiveUnmount(path.Join(tmp, "dir")); err != nil {
+		t.Fatal(err)
+	}
+	mounted, err = mountinfo.Mounted(path.Join(tmp, "dir-other"))
+	if err != nil {
+		t.Fatalf("error from mountinfo.mounted: %v", err)
+	}
+	if !mounted {
+		t.Fatal("expected dir-other to be mounted, but it's not")
+	}
+}
