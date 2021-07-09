@@ -6,23 +6,26 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"reflect"
+	"strings"
 	"syscall"
 	"testing"
-
-	"gotest.tools/v3/assert"
-	is "gotest.tools/v3/assert/cmp"
 )
 
 func buildTestBinary(t *testing.T, tmpdir string, prefix string) (string, string) {
 	t.Helper()
 	tmpDir, err := ioutil.TempDir(tmpdir, prefix)
-	assert.NilError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	exePath := tmpDir + "/" + prefix
 	wd, _ := os.Getwd()
 	testHelperCode := wd + "/testfiles/main.go"
 	cmd := exec.Command("go", "build", "-o", exePath, testHelperCode)
 	err = cmd.Run()
-	assert.NilError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return exePath, tmpDir
 }
 
@@ -49,16 +52,24 @@ func TestTrap(t *testing.T) {
 				cmd.Env = append(cmd.Env, "IF_MULTIPLE=1")
 			}
 			err := cmd.Start()
-			assert.NilError(t, err)
+			if err != nil {
+				t.Fatal(err)
+			}
 			err = cmd.Wait()
 			e, ok := err.(*exec.ExitError)
-			assert.Assert(t, ok, "expected exec.ExitError, got %T", e)
+			if !ok {
+				t.Fatalf("expected exec.ExitError, got %T", e)
+			}
 
 			code := e.Sys().(syscall.WaitStatus).ExitStatus()
 			if v.multiple {
-				assert.Check(t, is.DeepEqual(128+int(v.signal.(syscall.Signal)), code))
+				if !reflect.DeepEqual(128+int(v.signal.(syscall.Signal)), code) {
+					t.Fatalf("expected: %v, got: %v", 128+int(v.signal.(syscall.Signal)), code)
+				}
 			} else {
-				assert.Check(t, is.Equal(99, code))
+				if code != 99 {
+					t.Fatalf("expected: %v, got: %v", 99, code)
+				}
 			}
 		})
 	}
@@ -67,17 +78,28 @@ func TestTrap(t *testing.T) {
 
 func TestDumpStacks(t *testing.T) {
 	directory, err := ioutil.TempDir("", "test-dump-tasks")
-	assert.Check(t, err)
+	if err != nil {
+		t.Error(err)
+	}
 	defer os.RemoveAll(directory)
 	dumpPath, err := DumpStacks(directory)
-	assert.Check(t, err)
+	if err != nil {
+		t.Error(err)
+	}
 	readFile, _ := ioutil.ReadFile(dumpPath)
 	fileData := string(readFile)
-	assert.Check(t, is.Contains(fileData, "goroutine"))
+	if !strings.Contains(fileData, "goroutine") {
+		t.Error("dump does not contain 'goroutine'")
+	}
 }
 
 func TestDumpStacksWithEmptyInput(t *testing.T) {
 	path, err := DumpStacks("")
-	assert.Check(t, err)
-	assert.Check(t, is.Equal(os.Stderr.Name(), path))
+	if err != nil {
+		t.Error(err)
+	}
+	expected := os.Stderr.Name()
+	if path != os.Stderr.Name() {
+		t.Fatalf("expected: %v, got: %v", expected, path)
+	}
 }

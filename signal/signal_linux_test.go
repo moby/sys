@@ -7,9 +7,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
-	"gotest.tools/v3/assert"
-	is "gotest.tools/v3/assert/cmp"
 )
 
 func TestCatchAll(t *testing.T) {
@@ -30,7 +27,9 @@ func TestCatchAll(t *testing.T) {
 		if signal, ok := SignalMap[sigStr]; ok {
 			syscall.Kill(syscall.Getpid(), signal)
 			s := <-sigs
-			assert.Check(t, is.Equal(s.String(), signal.String()))
+			if s.String() != signal.String() {
+				t.Errorf("expected: %q, got: %q", signal, s)
+			}
 		}
 	}
 }
@@ -41,7 +40,9 @@ func TestCatchAllIgnoreSigUrg(t *testing.T) {
 	defer StopCatch(sigs)
 
 	err := syscall.Kill(syscall.Getpid(), syscall.SIGURG)
-	assert.NilError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	timer := time.NewTimer(1 * time.Second)
 	defer timer.Stop()
 	select {
@@ -57,9 +58,13 @@ func TestStopCatch(t *testing.T) {
 	CatchAll(channel)
 	syscall.Kill(syscall.Getpid(), signal)
 	signalString := <-channel
-	assert.Check(t, is.Equal(signalString.String(), signal.String()))
+	if signalString.String() != signal.String() {
+		t.Errorf("expected: %q, got: %q", signal, signalString)
+	}
 
 	StopCatch(channel)
 	_, ok := <-channel
-	assert.Check(t, is.Equal(ok, false))
+	if ok {
+		t.Error("expected: !ok, got: ok")
+	}
 }
