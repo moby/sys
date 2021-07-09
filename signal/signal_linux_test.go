@@ -25,7 +25,7 @@ func TestCatchAll(t *testing.T) {
 
 	for sigStr := range listOfSignals {
 		if signal, ok := SignalMap[sigStr]; ok {
-			syscall.Kill(syscall.Getpid(), signal)
+			_ = syscall.Kill(syscall.Getpid(), signal)
 			s := <-sigs
 			if s.String() != signal.String() {
 				t.Errorf("expected: %q, got: %q", signal, s)
@@ -56,7 +56,7 @@ func TestStopCatch(t *testing.T) {
 	signal := SignalMap["HUP"]
 	channel := make(chan os.Signal, 1)
 	CatchAll(channel)
-	syscall.Kill(syscall.Getpid(), signal)
+	_ = syscall.Kill(syscall.Getpid(), signal)
 	signalString := <-channel
 	if signalString.String() != signal.String() {
 		t.Errorf("expected: %q, got: %q", signal, signalString)

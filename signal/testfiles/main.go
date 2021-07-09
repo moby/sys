@@ -39,13 +39,13 @@ func main() {
 		case "TERM", "INT":
 			if multiple == "1" {
 				for {
-					p.Signal(sigmap[s])
+					_ = p.Signal(sigmap[s])
 				}
 			} else {
-				p.Signal(sigmap[s])
+				_ = p.Signal(sigmap[s])
 			}
 		case "QUIT":
-			p.Signal(sigmap[s])
+			_ = p.Signal(sigmap[s])
 		}
 	}()
 	time.Sleep(2 * time.Second)

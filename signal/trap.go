@@ -56,7 +56,7 @@ func Trap(cleanup func(), logger interface {
 						logger.Info("Forcing docker daemon shutdown without cleanup; 3 interrupts received")
 					}
 				case syscall.SIGQUIT:
-					DumpStacks("")
+					_, _ = DumpStacks("")
 					logger.Info("Forcing docker daemon shutdown without cleanup on SIGQUIT")
 				}
 				// for the SIGINT/TERM, and SIGQUIT non-clean shutdown case, exit with 128 + signal #
@@ -90,8 +90,8 @@ func DumpStacks(dir string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to open file to write the goroutine stacks: %w", err)
 		}
-		defer f.Close()
-		defer f.Sync()
+		defer f.Close() //nolint: errcheck
+		defer f.Sync()  //nolint: errcheck
 	} else {
 		f = os.Stderr
 	}
