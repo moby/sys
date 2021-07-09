@@ -5,7 +5,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/docker/pkg/signal"
+	"github.com/moby/sys/signal"
 	"github.com/sirupsen/logrus"
 )
 
