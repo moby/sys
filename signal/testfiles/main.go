@@ -1,13 +1,22 @@
 package main
 
 import (
+	"log"
 	"os"
 	"syscall"
 	"time"
 
 	"github.com/moby/sys/signal"
-	"github.com/sirupsen/logrus"
 )
+
+var std = log.New(os.Stderr, "", log.LstdFlags)
+
+type logger struct{}
+
+func (l logger) Info(v ...interface{}) {
+	// use log.Default() once we no longer support Go 1.15 and older
+	std.Print(v...)
+}
 
 func main() {
 	sigmap := map[string]os.Signal{
@@ -18,7 +27,7 @@ func main() {
 	signal.Trap(func() {
 		time.Sleep(time.Second)
 		os.Exit(99)
-	}, logrus.StandardLogger())
+	}, logger{})
 	go func() {
 		p, err := os.FindProcess(os.Getpid())
 		if err != nil {
