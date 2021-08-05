@@ -20,17 +20,17 @@ const (
 // ztypes_windows.go: "More invented values for signals". Windows doesn't
 // really support signals in any way, shape or form that Unix does.
 var SignalMap = map[string]syscall.Signal{
-	"HUP":  syscall.Signal(windows.SIGHUP),
-	"INT":  syscall.Signal(windows.SIGINT),
-	"QUIT": syscall.Signal(windows.SIGQUIT),
-	"ILL":  syscall.Signal(windows.SIGILL),
-	"TRAP": syscall.Signal(windows.SIGTRAP),
 	"ABRT": syscall.Signal(windows.SIGABRT),
+	"ALRM": syscall.Signal(windows.SIGALRM),
 	"BUS":  syscall.Signal(windows.SIGBUS),
 	"FPE":  syscall.Signal(windows.SIGFPE),
+	"HUP":  syscall.Signal(windows.SIGHUP),
+	"ILL":  syscall.Signal(windows.SIGILL),
+	"INT":  syscall.Signal(windows.SIGINT),
 	"KILL": syscall.Signal(windows.SIGKILL),
-	"SEGV": syscall.Signal(windows.SIGSEGV),
 	"PIPE": syscall.Signal(windows.SIGPIPE),
-	"ALRM": syscall.Signal(windows.SIGALRM),
+	"QUIT": syscall.Signal(windows.SIGQUIT),
+	"SEGV": syscall.Signal(windows.SIGSEGV),
 	"TERM": syscall.Signal(windows.SIGTERM),
+	"TRAP": syscall.Signal(windows.SIGTRAP),
 }
