@@ -12,8 +12,6 @@ const (
 	SIGCHLD  = syscall.Signal(0xff)
 	SIGWINCH = syscall.Signal(0xff)
 	SIGPIPE  = syscall.Signal(0xff)
-	// DefaultStopSignal is the syscall signal used to stop a container in windows systems.
-	DefaultStopSignal = "15"
 )
 
 // SignalMap is a map of "supported" signals. As per the comment in GOLang's
