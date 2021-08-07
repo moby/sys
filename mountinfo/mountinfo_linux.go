@@ -90,7 +90,7 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		// ignore any numbers parsing errors, as there should not be any
 		p.ID, _ = strconv.Atoi(fields[0])
 		p.Parent, _ = strconv.Atoi(fields[1])
-		mm := strings.Split(fields[2], ":")
+		mm := strings.SplitN(fields[2], ":", 3)
 		if len(mm) != 2 {
 			return nil, fmt.Errorf("Parsing '%s' failed: unexpected minor:major pair %s", text, mm)
 		}
