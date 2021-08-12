@@ -52,7 +52,7 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		numFields := len(fields)
 		if numFields < 10 {
 			// should be at least 10 fields
-			return nil, fmt.Errorf("Parsing '%s' failed: not enough fields (%d)", text, numFields)
+			return nil, fmt.Errorf("parsing '%s' failed: not enough fields (%d)", text, numFields)
 		}
 
 		// separator field
@@ -67,7 +67,7 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		for fields[sepIdx] != "-" {
 			sepIdx--
 			if sepIdx == 5 {
-				return nil, fmt.Errorf("Parsing '%s' failed: missing - separator", text)
+				return nil, fmt.Errorf("parsing '%s' failed: missing - separator", text)
 			}
 		}
 
@@ -75,15 +75,15 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 
 		p.Mountpoint, err = unescape(fields[4])
 		if err != nil {
-			return nil, fmt.Errorf("Parsing '%s' failed: mount point: %w", fields[4], err)
+			return nil, fmt.Errorf("parsing '%s' failed: mount point: %w", fields[4], err)
 		}
 		p.FSType, err = unescape(fields[sepIdx+1])
 		if err != nil {
-			return nil, fmt.Errorf("Parsing '%s' failed: fstype: %w", fields[sepIdx+1], err)
+			return nil, fmt.Errorf("parsing '%s' failed: fstype: %w", fields[sepIdx+1], err)
 		}
 		p.Source, err = unescape(fields[sepIdx+2])
 		if err != nil {
-			return nil, fmt.Errorf("Parsing '%s' failed: source: %w", fields[sepIdx+2], err)
+			return nil, fmt.Errorf("parsing '%s' failed: source: %w", fields[sepIdx+2], err)
 		}
 		p.VFSOptions = fields[sepIdx+3]
 
@@ -92,14 +92,14 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		p.Parent, _ = strconv.Atoi(fields[1])
 		mm := strings.Split(fields[2], ":")
 		if len(mm) != 2 {
-			return nil, fmt.Errorf("Parsing '%s' failed: unexpected minor:major pair %s", text, mm)
+			return nil, fmt.Errorf("parsing '%s' failed: unexpected major:minor pair %s", text, mm)
 		}
 		p.Major, _ = strconv.Atoi(mm[0])
 		p.Minor, _ = strconv.Atoi(mm[1])
 
 		p.Root, err = unescape(fields[3])
 		if err != nil {
-			return nil, fmt.Errorf("Parsing '%s' failed: root: %w", fields[3], err)
+			return nil, fmt.Errorf("parsing '%s' failed: root: %w", fields[3], err)
 		}
 
 		p.Options = fields[5]

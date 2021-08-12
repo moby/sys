@@ -47,7 +47,7 @@ func testSymlink(tmpdir, path, expected, scope string) error {
 		return err
 	}
 	if expected != rewrite {
-		return fmt.Errorf("Expected %q got %q", expected, rewrite)
+		return fmt.Errorf("expected %q got %q", expected, rewrite)
 	}
 	return nil
 }

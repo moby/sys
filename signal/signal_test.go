@@ -7,13 +7,13 @@ import (
 
 func TestParseSignal(t *testing.T) {
 	_, err := ParseSignal("0")
-	expectedErr := "Invalid signal: 0"
+	expectedErr := "invalid signal: 0"
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("expected  %q, but got %v", expectedErr, err)
 	}
 
 	_, err = ParseSignal("SIG")
-	expectedErr = "Invalid signal: SIG"
+	expectedErr = "invalid signal: SIG"
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("expected  %q, but got %v", expectedErr, err)
 	}
