@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: prepare vagrant
         run: |
-          ln -sf .ci/Vagrantfile.fedora33 Vagrantfile
+          ln -sf .ci/Vagrantfile.fedora34 Vagrantfile
           # Retry if it fails (download.fedoraproject.org returns 404 sometimes)
           vagrant up || vagrant up
           vagrant ssh-config >> ~/.ssh/config
