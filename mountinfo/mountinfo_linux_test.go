@@ -693,34 +693,37 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		r := bytes.NewBufferString(tc.entry)
-		info, err := GetMountsFromReader(r, nil)
-		if !tc.valid {
-			if err == nil {
-				t.Errorf("case %q: expected error, got nil", tc.name)
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			r := bytes.NewBufferString(tc.entry)
+			info, err := GetMountsFromReader(r, nil)
+			if !tc.valid {
+				if err == nil {
+					t.Errorf("expected error, got nil")
+				}
+				return
 			}
-			continue
-		}
-		if err != nil {
-			t.Errorf("case %q: expected no error, got %v", tc.name, err)
-			continue
-		}
-		if len(info) != 1 {
-			t.Errorf("case %q: expected 1 result, got %d", tc.name, len(info))
-		}
-		if tc.exp == nil {
-			continue
-		}
-		i := info[0]
-		if tc.exp.Mountpoint != "" && tc.exp.Mountpoint != i.Mountpoint {
-			t.Errorf("case %q: expected mp %s, got %s", tc.name, tc.exp.Mountpoint, i.Mountpoint)
-		}
-		if tc.exp.FSType != "" && tc.exp.FSType != i.FSType {
-			t.Errorf("case %q: expected fs %s, got %s", tc.name, tc.exp.FSType, i.FSType)
-		}
-		if tc.exp.Source != "" && tc.exp.Source != i.Source {
-			t.Errorf("case %q: expected src %s, got %s", tc.name, tc.exp.Source, i.Source)
-		}
+			if err != nil {
+				t.Errorf("expected no error, got %v", err)
+				return
+			}
+			if len(info) != 1 {
+				t.Errorf("expected 1 result, got %d", len(info))
+			}
+			if tc.exp == nil {
+				return
+			}
+			i := info[0]
+			if tc.exp.Mountpoint != "" && tc.exp.Mountpoint != i.Mountpoint {
+				t.Errorf("expected mp %s, got %s", tc.exp.Mountpoint, i.Mountpoint)
+			}
+			if tc.exp.FSType != "" && tc.exp.FSType != i.FSType {
+				t.Errorf("expected fs %s, got %s", tc.exp.FSType, i.FSType)
+			}
+			if tc.exp.Source != "" && tc.exp.Source != i.Source {
+				t.Errorf("expected src %s, got %s", tc.exp.Source, i.Source)
+			}
+		})
 	}
 }
 
