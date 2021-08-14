@@ -676,7 +676,7 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 			name:  "one optional field",
 			entry: `251 15 0:3573 / /mnt/point rw,relatime shared:123 - aufs none rw`,
 			valid: true,
-			exp:   &Info{Mountpoint: "/mnt/point", FSType: "aufs", Source: "none", Optional: "shared:123 extra:tag what:ever"},
+			exp:   &Info{Mountpoint: "/mnt/point", FSType: "aufs", Source: "none", Optional: "shared:123"},
 		},
 		{
 			name:  "extra optional fields", // which we carefully gather
@@ -722,6 +722,9 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 			}
 			if tc.exp.Source != "" && tc.exp.Source != i.Source {
 				t.Errorf("expected src %s, got %s", tc.exp.Source, i.Source)
+			}
+			if tc.exp.Optional != "" && tc.exp.Optional != i.Optional {
+				t.Errorf("expected optional %s, got %s", tc.exp.Optional, i.Optional)
 			}
 		})
 	}
