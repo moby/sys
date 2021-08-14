@@ -682,7 +682,7 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 			name:  "extra optional fields", // which we carefully gather
 			entry: `251 15 0:3573 / /mnt/point rw,relatime shared:123 extra:tag what:ever key:value - aufs none rw`,
 			valid: true,
-			exp:   &Info{Mountpoint: "/mnt/point", FSType: "aufs", Source: "none", Optional: "shared:123 extra:tag what:ever"},
+			exp:   &Info{Mountpoint: "/mnt/point", FSType: "aufs", Source: "none", Optional: "shared:123 extra:tag what:ever key:value"},
 		},
 		{
 			name:  "empty source field (kernel < 5.1 bug)",

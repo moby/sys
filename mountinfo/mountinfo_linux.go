@@ -105,16 +105,9 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		p.Options = fields[5]
 
 		// zero or more optional fields
-		switch {
-		case sepIdx == 6:
-			// zero, do nothing
-		case sepIdx == 7:
-			p.Optional = fields[6]
-		default:
-			p.Optional = strings.Join(fields[6:sepIdx-1], " ")
-		}
+		p.Optional = strings.Join(fields[6:sepIdx], " ")
 
-		// Run the filter after parsing all of the fields.
+		// Run the filter after parsing all fields.
 		var skip, stop bool
 		if filter != nil {
 			skip, stop = filter(p)
