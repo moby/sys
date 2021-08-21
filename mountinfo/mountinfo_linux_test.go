@@ -424,56 +424,83 @@ const (
 649 94 259:5 /tmp/newline\012tab\011space\040backslash\134quote1'quote2" /tmp/newline\012tab\011space\040backslash\134quote1'quote2" rw,relatime shared:47 - ext4 /dev/nvme0n1p5 rw,seclabel`
 )
 
-func TestParseFedoraMountinfo(t *testing.T) {
-	r := bytes.NewBuffer([]byte(fedoraMountinfo))
-	_, err := GetMountsFromReader(r, nil)
-	if err != nil {
-		t.Fatal(err)
+func TestParseMountInfo(t *testing.T) {
+	testCases := []struct {
+		name           string
+		info           string
+		expectedLength int
+		mi             *Info
+	}{
+		{
+			name:           "fedora",
+			info:           fedoraMountinfo,
+			expectedLength: 58,
+			mi: &Info{
+				ID:         15,
+				Parent:     35,
+				Major:      0,
+				Minor:      3,
+				Root:       "/",
+				Mountpoint: "/proc",
+				Options:    "rw,nosuid,nodev,noexec,relatime",
+				Optional:   "shared:5",
+				FSType:     "proc",
+				Source:     "proc",
+				VFSOptions: "rw",
+			},
+		},
+		{
+			name:           "gentoo",
+			info:           gentooMountinfo,
+			expectedLength: 222,
+			mi: &Info{
+				ID:         15,
+				Parent:     1,
+				Major:      8,
+				Minor:      6,
+				Root:       "/",
+				Mountpoint: "/",
+				Options:    "rw,noatime,nodiratime",
+				Optional:   "",
+				FSType:     "ext4",
+				Source:     "/dev/sda6",
+				VFSOptions: "rw,data=ordered",
+			},
+		},
+		{
+			name:           "ubuntu",
+			info:           ubuntuMountinfo,
+			expectedLength: 130,
+			mi: &Info{
+				ID:         15,
+				Parent:     20,
+				Major:      0,
+				Minor:      14,
+				Root:       "/",
+				Mountpoint: "/sys",
+				Options:    "rw,nosuid,nodev,noexec,relatime",
+				Optional:   "",
+				FSType:     "sysfs",
+				Source:     "sysfs",
+				VFSOptions: "rw",
+			},
+		},
 	}
-}
-
-func TestParseUbuntuMountinfo(t *testing.T) {
-	r := bytes.NewBuffer([]byte(ubuntuMountinfo))
-	_, err := GetMountsFromReader(r, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestParseGentooMountinfo(t *testing.T) {
-	r := bytes.NewBuffer([]byte(gentooMountinfo))
-	_, err := GetMountsFromReader(r, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestParseFedoraMountinfoFields(t *testing.T) {
-	r := bytes.NewBuffer([]byte(fedoraMountinfo))
-	infos, err := GetMountsFromReader(r, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedLength := 58
-	if len(infos) != expectedLength {
-		t.Fatalf("Expected %d entries, got %d", expectedLength, len(infos))
-	}
-	mi := Info{
-		ID:         15,
-		Parent:     35,
-		Major:      0,
-		Minor:      3,
-		Root:       "/",
-		Mountpoint: "/proc",
-		Options:    "rw,nosuid,nodev,noexec,relatime",
-		Optional:   "shared:5",
-		FSType:     "proc",
-		Source:     "proc",
-		VFSOptions: "rw",
-	}
-
-	if *infos[0] != mi {
-		t.Fatalf("expected %#v, got %#v", mi, infos[0])
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			r := bytes.NewBuffer([]byte(tc.info))
+			infos, err := GetMountsFromReader(r, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(infos) != tc.expectedLength {
+				t.Errorf("Expected %d entries, got %d", tc.expectedLength, len(infos))
+			}
+			if tc.mi != nil && *infos[0] != *tc.mi {
+				t.Fatalf("expected %#v, got %#v", tc.mi, infos[0])
+			}
+		})
 	}
 }
 
