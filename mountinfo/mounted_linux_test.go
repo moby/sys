@@ -179,22 +179,27 @@ func requireOpenat2(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("requires root")
 	}
-	fd, err := unix.Openat2(unix.AT_FDCWD, ".", &unix.OpenHow{Flags: unix.O_RDONLY})
-	if err != nil {
+	if err := tryOpenat2(); err != nil {
 		t.Skipf("openat2: %v (old kernel? need Linux 5.6+)", err)
 	}
-	unix.Close(fd)
+}
+
+func tryOpenat2() error {
+	fd, err := unix.Openat2(unix.AT_FDCWD, ".", &unix.OpenHow{Flags: unix.O_RDONLY})
+	if err == nil {
+		_ = unix.Close(fd)
+	}
+	return err
 }
 
 func TestMountedBy(t *testing.T) {
-	requireOpenat2(t)
-
 	dir, mounts, err := prepareMounts(t)
 	defer cleanupMounts(t, dir, mounts)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 
+	openat2Supported := tryOpenat2() == nil
 	checked := false
 	for _, m := range mounts {
 		exp := !strings.Contains(m, notMounted)
@@ -207,11 +212,14 @@ func TestMountedBy(t *testing.T) {
 		}
 
 		checked = true
-		mounted, err = mountedByOpenat2(m)
-		if err != nil {
-			t.Errorf("mountedByOpenat2(%q) error: %v", m, err)
-		} else if mounted != exp {
-			t.Errorf("mountedByOpenat2(%q): expected %v, got %v", m, exp, mounted)
+
+		if openat2Supported {
+			mounted, err = mountedByOpenat2(m)
+			if err != nil {
+				t.Errorf("mountedByOpenat2(%q) error: %v", m, err)
+			} else if mounted != exp {
+				t.Errorf("mountedByOpenat2(%q): expected %v, got %v", m, exp, mounted)
+			}
 		}
 
 		mounted, err = mountedByStat(m)
