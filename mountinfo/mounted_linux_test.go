@@ -17,9 +17,30 @@ const (
 )
 
 func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
+	err = os.Chdir(os.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
 	dir, err = ioutil.TempDir("", t.Name())
 	if err != nil {
-		return
+		t.Fatal(err)
+	}
+
+	// Do not call t.Fatal below, otherwise cleanupMounts won't be called.
+
+	addMount := func(m string) {
+		mounts = append(mounts, m)
+
+		// Same path but relative to pwd.
+		m, err = filepath.Rel(pwd, m)
+		if err != nil {
+			return
+		}
+		mounts = append(mounts, m)
 	}
 
 	// A real (tmpfs) mount.
@@ -34,7 +55,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 		err = &os.PathError{Op: "mount", Path: mnt, Err: err}
 		return
 	}
-	mounts = append(mounts, mnt)
+	addMount(mnt)
 
 	// A directory bind-mounted to itself.
 	mnt = filepath.Join(dir, "bind-mount-dir")
@@ -48,7 +69,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 		err = &os.PathError{Op: "mount", Path: mnt, Err: err}
 		return
 	}
-	mounts = append(mounts, mnt)
+	addMount(mnt)
 
 	// A directory bind-mounted to other directory.
 	src := filepath.Join(dir, "some-dir")
@@ -67,7 +88,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 		err = &os.PathError{Op: "mount", Path: mnt, Err: err}
 		return
 	}
-	mounts = append(mounts, mnt)
+	addMount(mnt)
 
 	// A regular file bind-mounted to itself.
 	mnt = filepath.Join(dir, "bind-mount-file")
@@ -81,7 +102,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 		err = &os.PathError{Op: "mount", Path: mnt, Err: err}
 		return
 	}
-	mounts = append(mounts, mnt)
+	addMount(mnt)
 
 	// Not mounted socket.
 	sock := filepath.Join(dir, notMounted+".sock")
@@ -89,7 +110,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 	if err != nil {
 		return
 	}
-	mounts = append(mounts, sock)
+	addMount(sock)
 
 	// Bind-mounted socket.
 	mnt = filepath.Join(dir, "bind-mounted-socket")
@@ -102,7 +123,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 		err = &os.PathError{Op: "mount", Path: mnt, Err: err}
 		return
 	}
-	mounts = append(mounts, mnt)
+	addMount(mnt)
 
 	// Not mounted directory.
 	mnt = filepath.Join(dir, notMounted+"-dir")
@@ -110,7 +131,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 	if err != nil {
 		return
 	}
-	mounts = append(mounts, mnt)
+	addMount(mnt)
 
 	// Not mounted file.
 	mnt = filepath.Join(dir, notMounted+"-file")
@@ -118,7 +139,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 	if err != nil {
 		return
 	}
-	mounts = append(mounts, mnt)
+	addMount(mnt)
 
 	// A broken not-mounted symlink.
 	symlink := filepath.Join(dir, notMounted+"-broken-symlink")
@@ -127,7 +148,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 		err = &os.PathError{Op: "symlink", Path: symlink, Err: err}
 		return
 	}
-	mounts = append(mounts, symlink)
+	addMount(symlink)
 
 	// A valid not-mounted symlink.
 	dst := filepath.Join(dir, "file")
@@ -141,7 +162,7 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 		err = &os.PathError{Op: "symlink", Path: symlink, Err: err}
 		return
 	}
-	mounts = append(mounts, symlink)
+	addMount(symlink)
 
 	// A valid bind-mounted symlink
 	mnt = filepath.Join(dir, "bind-mounted-symlink")
@@ -154,14 +175,15 @@ func prepareMounts(t *testing.T) (dir string, mounts []string, err error) {
 		err = &os.PathError{Op: "mount", Path: mnt, Err: err}
 		return
 	}
-	mounts = append(mounts, mnt)
+	addMount(mnt)
 
 	return
 }
 
 func cleanupMounts(t *testing.T, dir string, mounts []string) {
 	for _, m := range mounts {
-		if strings.Contains(m, notMounted) {
+		// Skip duplicates and non-mounted entries.
+		if !filepath.IsAbs(m) || strings.Contains(m, notMounted) {
 			continue
 		}
 		err := unix.Unmount(m, unix.MNT_DETACH)

@@ -11,10 +11,6 @@ func GetMounts(f FilterFunc) ([]*Info, error) {
 }
 
 // Mounted determines if a specified path is a mount point.
-//
-// The argument must be an absolute path, with all symlinks resolved, and clean.
-// One way to ensure it is to process the path using filepath.Abs followed by
-// filepath.EvalSymlinks before calling this function.
 func Mounted(path string) (bool, error) {
 	// root is always mounted
 	if path == string(os.PathSeparator) {
