@@ -215,6 +215,10 @@ func tryOpenat2() error {
 }
 
 func TestMountedBy(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root required")
+	}
+
 	dir, mounts, err := prepareMounts(t)
 	defer cleanupMounts(t, dir, mounts)
 	if err != nil {
