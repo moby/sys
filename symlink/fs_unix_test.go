@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 // Licensed under the Apache License, Version 2.0; See LICENSE.APACHE
@@ -6,7 +7,6 @@ package symlink
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -53,7 +53,7 @@ func testSymlink(tmpdir, path, expected, scope string) error {
 }
 
 func TestFollowSymlinkAbsolute(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/a/d", target: "/b"}}); err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestFollowSymlinkAbsolute(t *testing.T) {
 }
 
 func TestFollowSymlinkRelativePath(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/i", target: "a"}}); err != nil {
 		t.Fatal(err)
@@ -75,7 +75,7 @@ func TestFollowSymlinkRelativePath(t *testing.T) {
 }
 
 func TestFollowSymlinkSkipSymlinksOutsideScope(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "linkdir", target: "realdir"},
@@ -95,7 +95,7 @@ func TestFollowSymlinkInvalidScopePathPair(t *testing.T) {
 }
 
 func TestFollowSymlinkLastLink(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/a/d", target: "/b"}}); err != nil {
 		t.Fatal(err)
@@ -106,7 +106,7 @@ func TestFollowSymlinkLastLink(t *testing.T) {
 }
 
 func TestFollowSymlinkRelativeLinkChangeScope(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/a/e", target: "../b"}}); err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestFollowSymlinkRelativeLinkChangeScope(t *testing.T) {
 }
 
 func TestFollowSymlinkDeepRelativeLinkChangeScope(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "testdata/fs/a/f", target: "../../../../test"}}); err != nil {
 		t.Fatal(err)
@@ -142,7 +142,7 @@ func TestFollowSymlinkDeepRelativeLinkChangeScope(t *testing.T) {
 }
 
 func TestFollowSymlinkRelativeLinkChain(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	// avoid letting symlink g (pointed at by symlink h) take out of scope
 	// TODO: we should probably normalize to scope here because ../[....]/root
@@ -159,7 +159,7 @@ func TestFollowSymlinkRelativeLinkChain(t *testing.T) {
 }
 
 func TestFollowSymlinkBreakoutPath(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	// avoid letting symlink -> ../directory/file escape from scope
 	// normalize to "testdata/fs/j"
@@ -172,7 +172,7 @@ func TestFollowSymlinkBreakoutPath(t *testing.T) {
 }
 
 func TestFollowSymlinkToRoot(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	// make sure we don't allow escaping to /
 	// normalize to dir
@@ -185,7 +185,7 @@ func TestFollowSymlinkToRoot(t *testing.T) {
 }
 
 func TestFollowSymlinkSlashDotdot(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 	tmpdir = filepath.Join(tmpdir, "dir", "subdir")
 
 	// make sure we don't allow escaping to /
@@ -199,7 +199,7 @@ func TestFollowSymlinkSlashDotdot(t *testing.T) {
 }
 
 func TestFollowSymlinkDotdot(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 	tmpdir = filepath.Join(tmpdir, "dir", "subdir")
 
 	// make sure we stay in scope without leaking information
@@ -214,7 +214,7 @@ func TestFollowSymlinkDotdot(t *testing.T) {
 }
 
 func TestFollowSymlinkRelativePath2(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "bar/foo", target: "baz/target"}}); err != nil {
 		t.Fatal(err)
@@ -225,7 +225,7 @@ func TestFollowSymlinkRelativePath2(t *testing.T) {
 }
 
 func TestFollowSymlinkScopeLink(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "root2"},
@@ -240,7 +240,7 @@ func TestFollowSymlinkScopeLink(t *testing.T) {
 }
 
 func TestFollowSymlinkRootScope(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	expected, err := filepath.EvalSymlinks(tmpdir)
 	if err != nil {
@@ -270,7 +270,7 @@ func TestFollowSymlinkEmpty(t *testing.T) {
 }
 
 func TestFollowSymlinkCircular(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{{path: "root/foo", target: "foo"}}); err != nil {
 		t.Fatal(err)
@@ -292,7 +292,7 @@ func TestFollowSymlinkCircular(t *testing.T) {
 }
 
 func TestFollowSymlinkComplexChainWithTargetPathsContainingLinks(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "root2"},
@@ -312,7 +312,7 @@ func TestFollowSymlinkComplexChainWithTargetPathsContainingLinks(t *testing.T) {
 }
 
 func TestFollowSymlinkBreakoutNonExistent(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "root/slash", target: "/"},
@@ -326,7 +326,7 @@ func TestFollowSymlinkBreakoutNonExistent(t *testing.T) {
 }
 
 func TestFollowSymlinkNoLexicalCleaning(t *testing.T) {
-	tmpdir := mkTempDir(t)
+	tmpdir := t.TempDir()
 
 	if err := makeFs(tmpdir, []dirOrLink{
 		{path: "root/sym", target: "/foo/bar"},
@@ -337,16 +337,4 @@ func TestFollowSymlinkNoLexicalCleaning(t *testing.T) {
 	if err := testSymlink(tmpdir, "root/hello", "root/foo/baz", "root"); err != nil {
 		t.Fatal(err)
 	}
-}
-
-// TODO use testing.TempDir() instead (https://golang.org/pkg/testing/#T.TempDir)
-//      once we no longer test on Go 1.14 and older.
-func mkTempDir(t *testing.T) string {
-	t.Helper()
-	tmpdir, err := ioutil.TempDir("", t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(tmpdir) })
-	return tmpdir
 }
