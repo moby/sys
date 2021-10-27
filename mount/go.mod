@@ -1,6 +1,6 @@
 module github.com/moby/sys/mount
 
-go 1.14
+go 1.16
 
 require (
 	github.com/moby/sys/mountinfo v0.4.1
