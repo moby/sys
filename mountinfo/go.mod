@@ -2,4 +2,4 @@ module github.com/moby/sys/mountinfo
 
 go 1.16
 
-require golang.org/x/sys v0.0.0-20200909081042-eff7692f9009
+require golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359
