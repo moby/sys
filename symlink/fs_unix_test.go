@@ -24,10 +24,10 @@ func makeFs(tmpdir string, fs []dirOrLink) error {
 	for _, s := range fs {
 		s.path = filepath.Join(tmpdir, s.path)
 		if s.target == "" {
-			_ = os.MkdirAll(s.path, 0755)
+			_ = os.MkdirAll(s.path, 0o755)
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(s.path), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
 			return err
 		}
 		if err := os.Symlink(s.target, s.path); err != nil && !os.IsExist(err) {
