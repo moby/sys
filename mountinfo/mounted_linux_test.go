@@ -299,6 +299,10 @@ func TestMountedBy(t *testing.T) {
 				if !(tc.isNotExist && errors.Is(err, os.ErrNotExist)) {
 					t.Errorf("Mounted: unexpected error: %v", err)
 				}
+				// Check false is returned in error case.
+				if mounted != false {
+					t.Errorf("Mounted: expected false on error, got %v", mounted)
+				}
 			}
 
 			// Check individual mountedBy* implementations.
@@ -315,6 +319,10 @@ func TestMountedBy(t *testing.T) {
 			mounted, err = mountedByMountinfo(m)
 			if err != nil {
 				t.Errorf("mountedByMountinfo error: %v", err)
+				// Check false is returned in error case.
+				if mounted != false {
+					t.Errorf("MountedByMountinfo: expected false on error, got %v", mounted)
+				}
 			} else if mounted != exp {
 				t.Errorf("mountedByMountinfo: expected %v, got %v", exp, mounted)
 			}
@@ -323,6 +331,10 @@ func TestMountedBy(t *testing.T) {
 			mounted, err = mountedByStat(m)
 			if err != nil {
 				t.Errorf("mountedByStat error: %v", err)
+				// Check false is returned in error case.
+				if mounted != false {
+					t.Errorf("MountedByStat: expected false on error, got %v", mounted)
+				}
 			} else if mounted != exp && !tc.isBind { // mountedByStat can not detect bind mounts
 				t.Errorf("mountedByStat: expected %v, got %v", exp, mounted)
 			}
@@ -333,6 +345,10 @@ func TestMountedBy(t *testing.T) {
 			mounted, err = mountedByOpenat2(m)
 			if err != nil {
 				t.Errorf("mountedByOpenat2 error: %v", err)
+				// Check false is returned in error case.
+				if mounted != false {
+					t.Errorf("MountedByOpenat2: expected false on error, got %v", mounted)
+				}
 			} else if mounted != exp {
 				t.Errorf("mountedByOpenat2: expected %v, got %v", exp, mounted)
 			}
