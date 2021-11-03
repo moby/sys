@@ -10,7 +10,12 @@ func GetMounts(f FilterFunc) ([]*Info, error) {
 	return parseMountTable(f)
 }
 
-// Mounted determines if a specified path is a mount point.
+// Mounted determines if a specified path is a mount point. In case of any
+// error, false (and an error) is returned.
+//
+// The non-existent path returns an error. If a caller is not interested
+// in this particular error, it should handle it separately using e.g.
+// errors.Is(err, os.ErrNotExist).
 func Mounted(path string) (bool, error) {
 	// root is always mounted
 	if path == string(os.PathSeparator) {
