@@ -35,7 +35,7 @@ func TestMounted(t *testing.T) {
 	}
 
 	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0777); err != nil {
+	if err := os.MkdirAll(tmp, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
@@ -47,18 +47,18 @@ func TestMounted(t *testing.T) {
 		targetPath = path.Join(targetDir, "file.txt")
 	)
 
-	if err := os.Mkdir(sourceDir, 0777); err != nil {
+	if err := os.Mkdir(sourceDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(targetDir, 0777); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0644); err != nil {
+	if err := os.Mkdir(targetDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(targetPath, nil, 0644); err != nil {
+	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ioutil.WriteFile(targetPath, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -105,7 +105,7 @@ func TestMountTmpfsOptions(t *testing.T) {
 	}
 
 	target := path.Join(os.TempDir(), "mount-tmpfs-tests-"+t.Name())
-	if err := os.MkdirAll(target, 0777); err != nil {
+	if err := os.MkdirAll(target, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(target)
@@ -142,7 +142,7 @@ func TestMountReadonly(t *testing.T) {
 	}
 
 	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0777); err != nil {
+	if err := os.MkdirAll(tmp, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
@@ -154,18 +154,18 @@ func TestMountReadonly(t *testing.T) {
 		targetPath = path.Join(targetDir, "file.txt")
 	)
 
-	if err := os.Mkdir(sourceDir, 0777); err != nil {
+	if err := os.Mkdir(sourceDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(targetDir, 0777); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0644); err != nil {
+	if err := os.Mkdir(targetDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(targetPath, nil, 0644); err != nil {
+	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ioutil.WriteFile(targetPath, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -178,7 +178,7 @@ func TestMountReadonly(t *testing.T) {
 		}
 	}()
 
-	if err := ioutil.WriteFile(targetPath, []byte("hello"), 0644); err == nil {
+	if err := ioutil.WriteFile(targetPath, []byte("hello"), 0o644); err == nil {
 		t.Fatal("Should not be able to open a ro file as rw")
 	}
 }

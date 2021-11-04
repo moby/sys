@@ -39,7 +39,7 @@ lint: $(BINDIR)/golangci-lint
 	done
 
 $(BINDIR)/golangci-lint: $(BINDIR)
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINDIR) v1.41.1
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINDIR) v1.43.0
 
 $(BINDIR):
 	mkdir -p $(BINDIR)

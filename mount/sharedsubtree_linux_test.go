@@ -17,7 +17,7 @@ func TestSubtreePrivate(t *testing.T) {
 	}
 
 	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0777); err != nil {
+	if err := os.MkdirAll(tmp, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
@@ -33,19 +33,19 @@ func TestSubtreePrivate(t *testing.T) {
 		outside1CheckPath = path.Join(targetDir, "a", "file.txt")
 		outside2CheckPath = path.Join(sourceDir, "b", "file.txt")
 	)
-	if err := os.MkdirAll(path.Join(sourceDir, "a"), 0777); err != nil {
+	if err := os.MkdirAll(path.Join(sourceDir, "a"), 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(path.Join(sourceDir, "b"), 0777); err != nil {
+	if err := os.MkdirAll(path.Join(sourceDir, "b"), 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(targetDir, 0777); err != nil {
+	if err := os.Mkdir(targetDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(outside1Dir, 0777); err != nil {
+	if err := os.Mkdir(outside1Dir, 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(outside2Dir, 0777); err != nil {
+	if err := os.Mkdir(outside2Dir, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
@@ -119,7 +119,7 @@ func TestSubtreeShared(t *testing.T) {
 	}
 
 	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0777); err != nil {
+	if err := os.MkdirAll(tmp, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
@@ -133,13 +133,13 @@ func TestSubtreeShared(t *testing.T) {
 		sourceCheckPath = path.Join(sourceDir, "a", "file.txt")
 	)
 
-	if err := os.MkdirAll(path.Join(sourceDir, "a"), 0777); err != nil {
+	if err := os.MkdirAll(path.Join(sourceDir, "a"), 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(targetDir, 0777); err != nil {
+	if err := os.Mkdir(targetDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(outsideDir, 0777); err != nil {
+	if err := os.Mkdir(outsideDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
@@ -191,7 +191,7 @@ func TestSubtreeSharedSlave(t *testing.T) {
 	}
 
 	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0777); err != nil {
+	if err := os.MkdirAll(tmp, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
@@ -207,19 +207,19 @@ func TestSubtreeSharedSlave(t *testing.T) {
 		outside1CheckPath = path.Join(targetDir, "a", "file.txt")
 		outside2CheckPath = path.Join(sourceDir, "b", "file.txt")
 	)
-	if err := os.MkdirAll(path.Join(sourceDir, "a"), 0777); err != nil {
+	if err := os.MkdirAll(path.Join(sourceDir, "a"), 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(path.Join(sourceDir, "b"), 0777); err != nil {
+	if err := os.MkdirAll(path.Join(sourceDir, "b"), 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(targetDir, 0777); err != nil {
+	if err := os.Mkdir(targetDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(outside1Dir, 0777); err != nil {
+	if err := os.Mkdir(outside1Dir, 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(outside2Dir, 0777); err != nil {
+	if err := os.Mkdir(outside2Dir, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
@@ -299,7 +299,7 @@ func TestSubtreeUnbindable(t *testing.T) {
 	}
 
 	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0777); err != nil {
+	if err := os.MkdirAll(tmp, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
@@ -308,10 +308,10 @@ func TestSubtreeUnbindable(t *testing.T) {
 		sourceDir = path.Join(tmp, "source")
 		targetDir = path.Join(tmp, "target")
 	)
-	if err := os.MkdirAll(sourceDir, 0777); err != nil {
+	if err := os.MkdirAll(sourceDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(targetDir, 0777); err != nil {
+	if err := os.MkdirAll(targetDir, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
@@ -326,7 +326,7 @@ func TestSubtreeUnbindable(t *testing.T) {
 	}()
 
 	// then attempt to mount it to target. It should fail
-	if err := Mount(sourceDir, targetDir, "none", "bind,rw"); err != nil && errors.Unwrap(err) != unix.EINVAL {
+	if err := Mount(sourceDir, targetDir, "none", "bind,rw"); err != nil && !errors.Is(err, unix.EINVAL) {
 		t.Fatal(err)
 	} else if err == nil {
 		t.Fatalf("%q should not have been bindable", sourceDir)
@@ -339,5 +339,5 @@ func TestSubtreeUnbindable(t *testing.T) {
 }
 
 func createFile(path string) error {
-	return ioutil.WriteFile(path, []byte("hello"), 0666)
+	return ioutil.WriteFile(path, []byte("hello"), 0o666)
 }
