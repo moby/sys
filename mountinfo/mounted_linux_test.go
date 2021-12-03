@@ -5,6 +5,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	"golang.org/x/sys/unix"
@@ -276,8 +279,14 @@ func tryOpenat2() error {
 }
 
 func TestMountedBy(t *testing.T) {
-	openat2Supported := tryOpenat2() == nil
 	checked := false
+
+	// List of individual implementations to check.
+	toCheck := []func(string) (bool, error){mountedByMountinfo, mountedByStat}
+	if tryOpenat2() == nil {
+		toCheck = append(toCheck, mountedByOpenat2)
+	}
+
 	for _, tc := range testMounts {
 		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
@@ -316,45 +325,29 @@ func TestMountedBy(t *testing.T) {
 				t.Fatalf("normalizePath: %v", err)
 			}
 
-			mounted, err = mountedByMountinfo(m)
-			if err != nil {
-				t.Errorf("mountedByMountinfo error: %v", err)
-				// Check false is returned in error case.
-				if mounted != false {
-					t.Errorf("MountedByMountinfo: expected false on error, got %v", mounted)
-				}
-			} else if mounted != exp {
-				t.Errorf("mountedByMountinfo: expected %v, got %v", exp, mounted)
-			}
-			checked = true
+			for _, fn := range toCheck {
+				// Figure out function name.
+				name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 
-			mounted, err = mountedByStat(m)
-			if err != nil {
-				t.Errorf("mountedByStat error: %v", err)
-				// Check false is returned in error case.
-				if mounted != false {
-					t.Errorf("MountedByStat: expected false on error, got %v", mounted)
+				mounted, err = fn(m)
+				if err != nil {
+					t.Errorf("%s: %v", name, err)
+					// Check false is returned in error case.
+					if mounted != false {
+						t.Errorf("%s: expected false on error, got %v", name, mounted)
+					}
+				} else if mounted != exp {
+					if tc.isBind && strings.HasSuffix(name, "mountedByStat") {
+						// mountedByStat can not detect bind mounts.
+					} else {
+						t.Errorf("%s: expected %v, got %v", name, exp, mounted)
+					}
 				}
-			} else if mounted != exp && !tc.isBind { // mountedByStat can not detect bind mounts
-				t.Errorf("mountedByStat: expected %v, got %v", exp, mounted)
-			}
-
-			if !openat2Supported {
-				return
-			}
-			mounted, err = mountedByOpenat2(m)
-			if err != nil {
-				t.Errorf("mountedByOpenat2 error: %v", err)
-				// Check false is returned in error case.
-				if mounted != false {
-					t.Errorf("MountedByOpenat2: expected false on error, got %v", mounted)
-				}
-			} else if mounted != exp {
-				t.Errorf("mountedByOpenat2: expected %v, got %v", exp, mounted)
+				checked = true
 			}
 		})
-
 	}
+
 	if !checked {
 		t.Skip("no mounts to check")
 	}
