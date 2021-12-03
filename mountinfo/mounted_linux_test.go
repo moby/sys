@@ -282,7 +282,7 @@ func TestMountedBy(t *testing.T) {
 	checked := false
 
 	// List of individual implementations to check.
-	toCheck := []func(string) (bool, error){mountedByMountinfo, mountedByStat}
+	toCheck := []func(string) (bool, error){mountedByMountinfo, mountedByMountinfoWithRetries, mountedByStat}
 	if tryOpenat2() == nil {
 		toCheck = append(toCheck, mountedByOpenat2)
 	}

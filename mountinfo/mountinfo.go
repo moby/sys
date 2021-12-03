@@ -16,6 +16,11 @@ func GetMounts(f FilterFunc) ([]*Info, error) {
 // The non-existent path returns an error. If a caller is not interested
 // in this particular error, it should handle it separately using e.g.
 // errors.Is(err, os.ErrNotExist).
+//
+// Note that on Linux (before kernel 5.8) bind mount detection is not reliable
+// (false negatives are possible) on systems that perform lots of mounts and
+// unmounts. For an implementation with lower probability of false negatives
+// with bind mounts, see MountedBind.
 func Mounted(path string) (bool, error) {
 	// root is always mounted
 	if path == string(os.PathSeparator) {
