@@ -342,15 +342,15 @@ func TestMountedBy(t *testing.T) {
 			if !openat2Supported {
 				return
 			}
-			mounted, err = mountedByOpenat2(m)
+			mounted, err = MountedByOpenat2(m)
 			if err != nil {
-				t.Errorf("mountedByOpenat2 error: %v", err)
+				t.Errorf("MountedByOpenat2 error: %v", err)
 				// Check false is returned in error case.
 				if mounted != false {
 					t.Errorf("MountedByOpenat2: expected false on error, got %v", mounted)
 				}
 			} else if mounted != exp {
-				t.Errorf("mountedByOpenat2: expected %v, got %v", exp, mounted)
+				t.Errorf("MountedByOpenat2: expected %v, got %v", exp, mounted)
 			}
 		})
 
@@ -375,13 +375,13 @@ func TestMountedByOpenat2VsMountinfo(t *testing.T) {
 			// (this special case is handled by Mounted).
 			continue
 		}
-		mounted, err := mountedByOpenat2(m)
+		mounted, err := MountedByOpenat2(m)
 		if err != nil {
 			if !errors.Is(err, os.ErrPermission) {
-				t.Errorf("mountedByOpenat2(%q) error: %+v", m, err)
+				t.Errorf("MountedByOpenat2(%q) error: %+v", m, err)
 			}
 		} else if !mounted {
-			t.Errorf("mountedByOpenat2(%q): expected true, got false", m)
+			t.Errorf("MountedByOpenat2(%q): expected true, got false", m)
 		}
 	}
 }

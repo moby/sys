@@ -7,9 +7,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// mountedByOpenat2 is a method of detecting a mount that works for all kinds
+// MountedByOpenat2 is a method of detecting a mount that works for all kinds
 // of mounts (incl. bind mounts), but requires a recent (v5.6+) linux kernel.
-func mountedByOpenat2(path string) (bool, error) {
+func MountedByOpenat2(path string) (bool, error) {
 	dir, last := filepath.Split(path)
 
 	dirfd, err := unix.Openat2(unix.AT_FDCWD, dir, &unix.OpenHow{
@@ -40,7 +40,7 @@ func mounted(path string) (bool, error) {
 		return false, err
 	}
 	// Try a fast path, using openat2() with RESOLVE_NO_XDEV.
-	mounted, err := mountedByOpenat2(path)
+	mounted, err := MountedByOpenat2(path)
 	if err == nil {
 		return mounted, nil
 	}
