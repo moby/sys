@@ -34,7 +34,7 @@ func tMount(t *testing.T, src, dst, fstype string, flags uintptr, options string
 	return nil
 }
 
-var testMounts = []struct {
+type testMount struct {
 	desc       string
 	isNotExist bool
 	isMount    bool
@@ -48,7 +48,9 @@ var testMounts = []struct {
 	// simplicity (no need to check for errors or call t.Cleanup()), and
 	// it may call t.Fatal, but practically we don't expect it.
 	prepare func(t *testing.T) (string, error)
-}{
+}
+
+var testMounts = []testMount{
 	{
 		desc:       "non-existent path",
 		isNotExist: true,
@@ -278,12 +280,65 @@ func tryOpenat2() error {
 	return err
 }
 
+func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported bool) {
+	mounted, sure, err := MountedFast(path)
+	if err != nil {
+		// Got an error; is it expected?
+		if !(tc.isNotExist && errors.Is(err, os.ErrNotExist)) {
+			t.Errorf("MountedFast: unexpected error: %v", err)
+		}
+
+		// In case of an error, sure and mounted must be false.
+		if sure {
+			t.Error("MountedFast: expected sure to be false on error")
+		}
+		if mounted {
+			t.Error("MountedFast: expected mounted to be false on error")
+		}
+
+		// No more checks.
+		return
+	}
+
+	if openat2Supported {
+		if mounted != tc.isMount {
+			t.Errorf("MountedFast: expected mounted to be %v, got %v", tc.isMount, mounted)
+		}
+
+		// No more checks.
+		return
+	}
+
+	if tc.isBind {
+		// For bind mounts, in case openat2 is not supported,
+		// sure and mounted must be false.
+		if sure {
+			t.Error("MountedFast: expected sure to be false for a bind mount")
+		}
+		if mounted {
+			t.Error("MountedFast: expected mounted to be false for a bind mount")
+		}
+	} else {
+		if mounted != tc.isMount {
+			t.Errorf("MountFast: expected mounted to be %v, got %v", tc.isMount, mounted)
+		}
+		if tc.isMount && !sure {
+			t.Error("MountFast: expected sure to be true for normal mount")
+		}
+		if !tc.isMount && sure {
+			t.Error("MountFast: expected sure to be false for non-mount")
+		}
+	}
+}
+
 func TestMountedBy(t *testing.T) {
 	checked := false
+	openat2Supported := false
 
 	// List of individual implementations to check.
 	toCheck := []func(string) (bool, error){mountedByMountinfo, mountedByStat}
 	if tryOpenat2() == nil {
+		openat2Supported = true
 		toCheck = append(toCheck, mountedByOpenat2)
 	}
 
@@ -311,6 +366,9 @@ func TestMountedBy(t *testing.T) {
 					t.Error("Mounted: expected false on error")
 				}
 			}
+
+			// Check the public MountedFast() function as a whole.
+			testMountedFast(t, m, &tc, openat2Supported)
 
 			// Check individual mountedBy* implementations.
 
