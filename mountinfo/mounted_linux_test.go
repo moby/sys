@@ -309,8 +309,8 @@ func TestMountedBy(t *testing.T) {
 					t.Errorf("Mounted: unexpected error: %v", err)
 				}
 				// Check false is returned in error case.
-				if mounted != false {
-					t.Errorf("Mounted: expected false on error, got %v", mounted)
+				if mounted {
+					t.Error("Mounted: expected false on error")
 				}
 			}
 
@@ -333,8 +333,8 @@ func TestMountedBy(t *testing.T) {
 				if err != nil {
 					t.Errorf("%s: %v", name, err)
 					// Check false is returned in error case.
-					if mounted != false {
-						t.Errorf("%s: expected false on error, got %v", name, mounted)
+					if mounted {
+						t.Errorf("%s: expected false on error", name)
 					}
 				} else if mounted != exp {
 					if tc.isBind && strings.HasSuffix(name, "mountedByStat") {
