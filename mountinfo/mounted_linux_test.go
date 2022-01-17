@@ -434,3 +434,24 @@ func TestMountedByOpenat2VsMountinfo(t *testing.T) {
 		}
 	}
 }
+
+// TestMountedRoot checks that Mounted* functions always return true for root
+// directory (since / is always mounted).
+func TestMountedRoot(t *testing.T) {
+	for _, path := range []string{
+		"/",
+		"/../../",
+		"/tmp/..",
+		strings.Repeat("../", unix.PathMax/3), // Hope $CWD is not too deep down.
+	} {
+		mounted, err := Mounted(path)
+		if err != nil || !mounted {
+			t.Errorf("Mounted(%q): expected true, <nil>; got %v, %v", path, mounted, err)
+		}
+
+		mounted, sure, err := MountedFast(path)
+		if err != nil || !mounted || !sure {
+			t.Errorf("MountedFast(%q): expected true, true, <nil>; got %v, %v, %v", path, mounted, sure, err)
+		}
+	}
+}
