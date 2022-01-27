@@ -295,13 +295,11 @@ func TestMountedBy(t *testing.T) {
 				t.Fatalf("prepare: %v", err)
 			}
 
-			exp := tc.isMount
-
 			// Check the public Mounted() function as a whole.
 			mounted, err := Mounted(m)
 			if err == nil {
-				if mounted != exp {
-					t.Errorf("Mounted: expected %v, got %v", exp, mounted)
+				if mounted != tc.isMount {
+					t.Errorf("Mounted: expected %v, got %v", tc.isMount, mounted)
 				}
 			} else {
 				// Got an error; is it expected?
@@ -336,11 +334,11 @@ func TestMountedBy(t *testing.T) {
 					if mounted {
 						t.Errorf("%s: expected false on error", name)
 					}
-				} else if mounted != exp {
+				} else if mounted != tc.isMount {
 					if tc.isBind && strings.HasSuffix(name, "mountedByStat") {
 						// mountedByStat can not detect bind mounts.
 					} else {
-						t.Errorf("%s: expected %v, got %v", name, exp, mounted)
+						t.Errorf("%s: expected %v, got %v", name, tc.isMount, mounted)
 					}
 				}
 				checked = true
