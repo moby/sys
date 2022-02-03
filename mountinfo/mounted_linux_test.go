@@ -5,6 +5,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	"golang.org/x/sys/unix"
@@ -31,7 +34,7 @@ func tMount(t *testing.T, src, dst, fstype string, flags uintptr, options string
 	return nil
 }
 
-var testMounts = []struct {
+type testMount struct {
 	desc       string
 	isNotExist bool
 	isMount    bool
@@ -45,7 +48,9 @@ var testMounts = []struct {
 	// simplicity (no need to check for errors or call t.Cleanup()), and
 	// it may call t.Fatal, but practically we don't expect it.
 	prepare func(t *testing.T) (string, error)
-}{
+}
+
+var testMounts = []testMount{
 	{
 		desc:       "non-existent path",
 		isNotExist: true,
@@ -275,9 +280,68 @@ func tryOpenat2() error {
 	return err
 }
 
+func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported bool) {
+	mounted, sure, err := MountedFast(path)
+	if err != nil {
+		// Got an error; is it expected?
+		if !(tc.isNotExist && errors.Is(err, os.ErrNotExist)) {
+			t.Errorf("MountedFast: unexpected error: %v", err)
+		}
+
+		// In case of an error, sure and mounted must be false.
+		if sure {
+			t.Error("MountedFast: expected sure to be false on error")
+		}
+		if mounted {
+			t.Error("MountedFast: expected mounted to be false on error")
+		}
+
+		// No more checks.
+		return
+	}
+
+	if openat2Supported {
+		if mounted != tc.isMount {
+			t.Errorf("MountedFast: expected mounted to be %v, got %v", tc.isMount, mounted)
+		}
+
+		// No more checks.
+		return
+	}
+
+	if tc.isBind {
+		// For bind mounts, in case openat2 is not supported,
+		// sure and mounted must be false.
+		if sure {
+			t.Error("MountedFast: expected sure to be false for a bind mount")
+		}
+		if mounted {
+			t.Error("MountedFast: expected mounted to be false for a bind mount")
+		}
+	} else {
+		if mounted != tc.isMount {
+			t.Errorf("MountFast: expected mounted to be %v, got %v", tc.isMount, mounted)
+		}
+		if tc.isMount && !sure {
+			t.Error("MountFast: expected sure to be true for normal mount")
+		}
+		if !tc.isMount && sure {
+			t.Error("MountFast: expected sure to be false for non-mount")
+		}
+	}
+}
+
 func TestMountedBy(t *testing.T) {
-	openat2Supported := tryOpenat2() == nil
 	checked := false
+	openat2Supported := false
+
+	// List of individual implementations to check.
+	toCheck := []func(string) (bool, error){mountedByMountinfo, mountedByStat}
+	if tryOpenat2() == nil {
+		openat2Supported = true
+		toCheck = append(toCheck, mountedByOpenat2)
+	}
+
 	for _, tc := range testMounts {
 		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
@@ -286,13 +350,11 @@ func TestMountedBy(t *testing.T) {
 				t.Fatalf("prepare: %v", err)
 			}
 
-			exp := tc.isMount
-
 			// Check the public Mounted() function as a whole.
 			mounted, err := Mounted(m)
 			if err == nil {
-				if mounted != exp {
-					t.Errorf("Mounted: expected %v, got %v", exp, mounted)
+				if mounted != tc.isMount {
+					t.Errorf("Mounted: expected %v, got %v", tc.isMount, mounted)
 				}
 			} else {
 				// Got an error; is it expected?
@@ -300,10 +362,13 @@ func TestMountedBy(t *testing.T) {
 					t.Errorf("Mounted: unexpected error: %v", err)
 				}
 				// Check false is returned in error case.
-				if mounted != false {
-					t.Errorf("Mounted: expected false on error, got %v", mounted)
+				if mounted {
+					t.Error("Mounted: expected false on error")
 				}
 			}
+
+			// Check the public MountedFast() function as a whole.
+			testMountedFast(t, m, &tc, openat2Supported)
 
 			// Check individual mountedBy* implementations.
 
@@ -316,45 +381,29 @@ func TestMountedBy(t *testing.T) {
 				t.Fatalf("normalizePath: %v", err)
 			}
 
-			mounted, err = mountedByMountinfo(m)
-			if err != nil {
-				t.Errorf("mountedByMountinfo error: %v", err)
-				// Check false is returned in error case.
-				if mounted != false {
-					t.Errorf("MountedByMountinfo: expected false on error, got %v", mounted)
-				}
-			} else if mounted != exp {
-				t.Errorf("mountedByMountinfo: expected %v, got %v", exp, mounted)
-			}
-			checked = true
+			for _, fn := range toCheck {
+				// Figure out function name.
+				name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 
-			mounted, err = mountedByStat(m)
-			if err != nil {
-				t.Errorf("mountedByStat error: %v", err)
-				// Check false is returned in error case.
-				if mounted != false {
-					t.Errorf("MountedByStat: expected false on error, got %v", mounted)
+				mounted, err = fn(m)
+				if err != nil {
+					t.Errorf("%s: %v", name, err)
+					// Check false is returned in error case.
+					if mounted {
+						t.Errorf("%s: expected false on error", name)
+					}
+				} else if mounted != tc.isMount {
+					if tc.isBind && strings.HasSuffix(name, "mountedByStat") {
+						// mountedByStat can not detect bind mounts.
+					} else {
+						t.Errorf("%s: expected %v, got %v", name, tc.isMount, mounted)
+					}
 				}
-			} else if mounted != exp && !tc.isBind { // mountedByStat can not detect bind mounts
-				t.Errorf("mountedByStat: expected %v, got %v", exp, mounted)
-			}
-
-			if !openat2Supported {
-				return
-			}
-			mounted, err = mountedByOpenat2(m)
-			if err != nil {
-				t.Errorf("mountedByOpenat2 error: %v", err)
-				// Check false is returned in error case.
-				if mounted != false {
-					t.Errorf("MountedByOpenat2: expected false on error, got %v", mounted)
-				}
-			} else if mounted != exp {
-				t.Errorf("mountedByOpenat2: expected %v, got %v", exp, mounted)
+				checked = true
 			}
 		})
-
 	}
+
 	if !checked {
 		t.Skip("no mounts to check")
 	}
@@ -382,6 +431,27 @@ func TestMountedByOpenat2VsMountinfo(t *testing.T) {
 			}
 		} else if !mounted {
 			t.Errorf("mountedByOpenat2(%q): expected true, got false", m)
+		}
+	}
+}
+
+// TestMountedRoot checks that Mounted* functions always return true for root
+// directory (since / is always mounted).
+func TestMountedRoot(t *testing.T) {
+	for _, path := range []string{
+		"/",
+		"/../../",
+		"/tmp/..",
+		strings.Repeat("../", unix.PathMax/3), // Hope $CWD is not too deep down.
+	} {
+		mounted, err := Mounted(path)
+		if err != nil || !mounted {
+			t.Errorf("Mounted(%q): expected true, <nil>; got %v, %v", path, mounted, err)
+		}
+
+		mounted, sure, err := MountedFast(path)
+		if err != nil || !mounted || !sure {
+			t.Errorf("MountedFast(%q): expected true, true, <nil>; got %v, %v, %v", path, mounted, sure, err)
 		}
 	}
 }
