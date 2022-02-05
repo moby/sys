@@ -1,4 +1,3 @@
-.SHELLFLAGS = -ec
 PACKAGES ?= mountinfo mount signal symlink
 BINDIR ?= _build/bin
 CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
@@ -15,8 +14,9 @@ clean:
 
 .PHONY: test
 test: test-local
+	set -eu; \
 	for p in $(PACKAGES); do \
-		(cd $$p && go test $(RUN_VIA_SUDO) -v .); \
+		(cd $$p; go test $(RUN_VIA_SUDO) -v .); \
 	done
 
 # Test the mount module against the local mountinfo source code instead of the
@@ -33,9 +33,11 @@ test-local:
 .PHONY: lint
 lint: $(BINDIR)/golangci-lint
 	$(BINDIR)/golangci-lint version
+	set -eu; \
 	for p in $(PACKAGES); do \
-		(cd $$p && go mod download \
-		&& ../$(BINDIR)/golangci-lint run); \
+		(cd $$p; \
+		go mod download; \
+		../$(BINDIR)/golangci-lint run); \
 	done
 
 $(BINDIR)/golangci-lint: $(BINDIR)
@@ -46,10 +48,11 @@ $(BINDIR):
 
 .PHONY: cross
 cross:
+	set -eu; \
 	for osarch in $(CROSS); do \
 		export GOOS=$${osarch%/*} GOARCH=$${osarch#*/}; \
 		echo "# building for $$GOOS/$$GOARCH"; \
 		for p in $(PACKAGES); do \
-			(cd $$p	&& go build .); \
+			(cd $$p; go build .); \
 		done; \
 	done
