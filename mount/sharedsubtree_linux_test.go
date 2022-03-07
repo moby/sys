@@ -2,7 +2,6 @@ package mount
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -322,5 +321,5 @@ func TestSubtreeUnbindable(t *testing.T) {
 }
 
 func createFile(path string) error {
-	return ioutil.WriteFile(path, []byte("hello"), 0o666)
+	return os.WriteFile(path, []byte("hello"), 0o666)
 }

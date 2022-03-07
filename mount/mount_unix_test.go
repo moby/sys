@@ -4,7 +4,6 @@
 package mount
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -49,11 +48,11 @@ func TestMounted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
+	if err := os.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(targetPath, nil, 0o644); err != nil {
+	if err := os.WriteFile(targetPath, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -146,11 +145,11 @@ func TestMountReadonly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
+	if err := os.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(targetPath, nil, 0o644); err != nil {
+	if err := os.WriteFile(targetPath, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -163,7 +162,7 @@ func TestMountReadonly(t *testing.T) {
 		}
 	}()
 
-	if err := ioutil.WriteFile(targetPath, []byte("hello"), 0o644); err == nil {
+	if err := os.WriteFile(targetPath, []byte("hello"), 0o644); err == nil {
 		t.Fatal("Should not be able to open a ro file as rw")
 	}
 }
