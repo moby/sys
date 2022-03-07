@@ -16,13 +16,9 @@ func TestSubtreePrivate(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp = t.TempDir()
+
 		sourceDir   = path.Join(tmp, "source")
 		targetDir   = path.Join(tmp, "target")
 		outside1Dir = path.Join(tmp, "outside1")
@@ -118,13 +114,9 @@ func TestSubtreeShared(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp = t.TempDir()
+
 		sourceDir  = path.Join(tmp, "source")
 		targetDir  = path.Join(tmp, "target")
 		outsideDir = path.Join(tmp, "outside")
@@ -190,13 +182,9 @@ func TestSubtreeSharedSlave(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp = t.TempDir()
+
 		sourceDir   = path.Join(tmp, "source")
 		targetDir   = path.Join(tmp, "target")
 		outside1Dir = path.Join(tmp, "outside1")
@@ -298,13 +286,8 @@ func TestSubtreeUnbindable(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp       = t.TempDir()
 		sourceDir = path.Join(tmp, "source")
 		targetDir = path.Join(tmp, "target")
 	)
