@@ -44,10 +44,10 @@ func TestSubtreePrivate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createFile(outside1Path); err != nil {
+	if err := os.WriteFile(outside1Path, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := createFile(outside2Path); err != nil {
+	if err := os.WriteFile(outside2Path, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -134,7 +134,7 @@ func TestSubtreeShared(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createFile(outsidePath); err != nil {
+	if err := os.WriteFile(outsidePath, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -210,10 +210,10 @@ func TestSubtreeSharedSlave(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createFile(outside1Path); err != nil {
+	if err := os.WriteFile(outside1Path, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := createFile(outside2Path); err != nil {
+	if err := os.WriteFile(outside2Path, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -318,8 +318,4 @@ func TestSubtreeUnbindable(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-}
-
-func createFile(path string) error {
-	return os.WriteFile(path, []byte("hello"), 0o666)
 }
