@@ -4,12 +4,14 @@
 package mount
 
 import (
+	"errors"
 	"os"
 	"path"
 	"strings"
 	"testing"
 
 	"github.com/moby/sys/mountinfo"
+	"golang.org/x/sys/unix"
 )
 
 func TestMountOptionsParsing(t *testing.T) {
@@ -228,5 +230,47 @@ func TestRecursiveUnmountTooGreedy(t *testing.T) {
 	}
 	if !mounted {
 		t.Fatal("expected dir-other to be mounted, but it's not")
+	}
+}
+
+func TestRecursiveUnmount_SubMountFailsToUnmount(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root required")
+	}
+
+	var (
+		tmp        = t.TempDir()
+		parent     = tmp + "/sub1"
+		child      = tmp + "/sub1/sub2"
+		grandChild = tmp + "/sub1/sub2/sub3"
+	)
+
+	err := os.MkdirAll(grandChild, 0o700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a set of mounts that should result in RecursiveUnmount failure,
+	// caused by the fact that the grandchild mount is shadowed by the child mount,
+	// and the child mount is shadowed by the parent mount. So. these two mounts
+	// are listed in mountinfo, but since they are unreachable, unmount will fail.
+	toMount := []string{grandChild, child, parent}
+	for _, dir := range toMount {
+		dir := dir
+		if err := Mount("tmpfs", dir, "tmpfs", ""); err != nil {
+			t.Fatal(err)
+		}
+		defer Unmount(dir) //nolint:errcheck
+	}
+
+	// unmount shadowed mounts
+	shadowedMounts := []string{child, grandChild}
+	for _, shadowedMount := range shadowedMounts {
+		t.Run(shadowedMount, func(t *testing.T) {
+			err := RecursiveUnmount(shadowedMount)
+			if !errors.Is(err, unix.ENOENT) {
+				t.Fatalf("expected submount(shadowed) %s to return unix.ENOENT, got %v", shadowedMount, err)
+			}
+		})
 	}
 }
