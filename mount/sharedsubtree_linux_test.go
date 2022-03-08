@@ -2,7 +2,6 @@ package mount
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -16,13 +15,9 @@ func TestSubtreePrivate(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp = t.TempDir()
+
 		sourceDir   = path.Join(tmp, "source")
 		targetDir   = path.Join(tmp, "target")
 		outside1Dir = path.Join(tmp, "outside1")
@@ -49,10 +44,10 @@ func TestSubtreePrivate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createFile(outside1Path); err != nil {
+	if err := os.WriteFile(outside1Path, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := createFile(outside2Path); err != nil {
+	if err := os.WriteFile(outside2Path, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -118,13 +113,9 @@ func TestSubtreeShared(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp = t.TempDir()
+
 		sourceDir  = path.Join(tmp, "source")
 		targetDir  = path.Join(tmp, "target")
 		outsideDir = path.Join(tmp, "outside")
@@ -143,7 +134,7 @@ func TestSubtreeShared(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createFile(outsidePath); err != nil {
+	if err := os.WriteFile(outsidePath, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -190,13 +181,9 @@ func TestSubtreeSharedSlave(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp = t.TempDir()
+
 		sourceDir   = path.Join(tmp, "source")
 		targetDir   = path.Join(tmp, "target")
 		outside1Dir = path.Join(tmp, "outside1")
@@ -223,10 +210,10 @@ func TestSubtreeSharedSlave(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := createFile(outside1Path); err != nil {
+	if err := os.WriteFile(outside1Path, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := createFile(outside2Path); err != nil {
+	if err := os.WriteFile(outside2Path, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -298,13 +285,8 @@ func TestSubtreeUnbindable(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp       = t.TempDir()
 		sourceDir = path.Join(tmp, "source")
 		targetDir = path.Join(tmp, "target")
 	)
@@ -336,8 +318,4 @@ func TestSubtreeUnbindable(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-}
-
-func createFile(path string) error {
-	return ioutil.WriteFile(path, []byte("hello"), 0o666)
 }

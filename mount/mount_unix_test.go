@@ -4,7 +4,6 @@
 package mount
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -34,13 +33,8 @@ func TestMounted(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp        = t.TempDir()
 		sourceDir  = path.Join(tmp, "source")
 		targetDir  = path.Join(tmp, "target")
 		sourcePath = path.Join(sourceDir, "file.txt")
@@ -54,11 +48,11 @@ func TestMounted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
+	if err := os.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(targetPath, nil, 0o644); err != nil {
+	if err := os.WriteFile(targetPath, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,12 +98,7 @@ func TestMountTmpfsOptions(t *testing.T) {
 		},
 	}
 
-	target := path.Join(os.TempDir(), "mount-tmpfs-tests-"+t.Name())
-	if err := os.MkdirAll(target, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(target)
-
+	target := t.TempDir()
 	for _, tc := range testCases {
 		t.Run(tc.opts, func(t *testing.T) {
 			if err := Mount("tmpfs", target, "tmpfs", tc.opts); err != nil {
@@ -141,13 +130,8 @@ func TestMountReadonly(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp := path.Join(os.TempDir(), "mount-tests")
-	if err := os.MkdirAll(tmp, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
 	var (
+		tmp        = t.TempDir()
 		sourceDir  = path.Join(tmp, "source")
 		targetDir  = path.Join(tmp, "target")
 		sourcePath = path.Join(sourceDir, "file.txt")
@@ -161,11 +145,11 @@ func TestMountReadonly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
+	if err := os.WriteFile(sourcePath, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile(targetPath, nil, 0o644); err != nil {
+	if err := os.WriteFile(targetPath, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -178,7 +162,7 @@ func TestMountReadonly(t *testing.T) {
 		}
 	}()
 
-	if err := ioutil.WriteFile(targetPath, []byte("hello"), 0o644); err == nil {
+	if err := os.WriteFile(targetPath, []byte("hello"), 0o644); err == nil {
 		t.Fatal("Should not be able to open a ro file as rw")
 	}
 }
@@ -211,12 +195,7 @@ func TestRecursiveUnmountTooGreedy(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	tmp, err := ioutil.TempDir("", t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
+	tmp := t.TempDir()
 	// Create a bunch of tmpfs mounts. Make sure "dir" itself is not
 	// a mount point, or we'll hit the fast path in RecursiveUnmount.
 	dirs := []string{"dir-other", "dir/subdir1", "dir/subdir1/subsub", "dir/subdir2/subsub"}

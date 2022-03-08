@@ -2,7 +2,6 @@ package mount
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -15,12 +14,7 @@ func TestMount(t *testing.T) {
 		t.Skip("root required")
 	}
 
-	source, err := ioutil.TempDir("", "mount-test-source-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(source)
-
+	source := t.TempDir()
 	// Ensure we have a known start point by mounting tmpfs with given options
 	if err := Mount("tmpfs", source, "tmpfs", "private"); err != nil {
 		t.Fatal(err)
@@ -31,11 +25,7 @@ func TestMount(t *testing.T) {
 		t.FailNow()
 	}
 
-	target, err := ioutil.TempDir("", "mount-test-target-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(target)
+	target := t.TempDir()
 
 	tests := []struct {
 		source           string
