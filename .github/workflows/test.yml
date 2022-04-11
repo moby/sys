@@ -9,11 +9,11 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
     - name: Install Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go-version }}
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Lint
       run: make lint
     - name: Cross build
@@ -27,7 +27,7 @@ jobs:
     # nested virtualization is only available on macOS hosts
     runs-on: macos-10.15
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: prepare vagrant
         run: |
           ln -sf .ci/Vagrantfile.fedora Vagrantfile
