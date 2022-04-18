@@ -1,43 +1,51 @@
-//go:build (freebsd && cgo) || (openbsd && cgo) || (darwin && cgo)
-// +build freebsd,cgo openbsd,cgo darwin,cgo
+//go:build freebsd || openbsd || darwin
+// +build freebsd openbsd darwin
 
 package mountinfo
 
-/*
-#include <sys/param.h>
-#include <sys/ucred.h>
-#include <sys/mount.h>
-*/
-import "C"
-
 import (
-	"fmt"
 	"reflect"
-	"unsafe"
+	"syscall"
 )
+
+func getInfo(r reflect.Value, a string, b string) string {
+	if r.FieldByName(a) != (reflect.Value{}) {
+		r = r.FieldByName(a)
+	} else {
+		r = r.FieldByName(b)
+	}
+	var bs []byte
+	for i := 0; i < r.Len(); i++ {
+		i8 := r.Index(i).Int()
+		if i8 == 0 {
+			break
+		}
+		bs = append(bs, byte(i8))
+	}
+	return string(bs)
+}
 
 // parseMountTable returns information about mounted filesystems
 func parseMountTable(filter FilterFunc) ([]*Info, error) {
-	var rawEntries *C.struct_statfs
-
-	count := int(C.getmntinfo(&rawEntries, C.MNT_WAIT))
-	if count == 0 {
-		return nil, fmt.Errorf("failed to call getmntinfo")
+	count, err := syscall.Getfsstat(nil, 1 /* MNT_WAIT */)
+	if err != nil {
+		return nil, err
 	}
 
-	var entries []C.struct_statfs
-	header := (*reflect.SliceHeader)(unsafe.Pointer(&entries))
-	header.Cap = count
-	header.Len = count
-	header.Data = uintptr(unsafe.Pointer(rawEntries))
+	var entries = make([]syscall.Statfs_t, count)
+	_, err = syscall.Getfsstat(entries, 1 /* MNT_WAIT */)
+	if err != nil {
+		return nil, err
+	}
 
 	var out []*Info
 	for _, entry := range entries {
 		var mountinfo Info
 		var skip, stop bool
-		mountinfo.Mountpoint = C.GoString(&entry.f_mntonname[0])
-		mountinfo.FSType = C.GoString(&entry.f_fstypename[0])
-		mountinfo.Source = C.GoString(&entry.f_mntfromname[0])
+		r := reflect.ValueOf(entry)
+		mountinfo.Mountpoint = getInfo(r, "Mntonname", "F_mntonname" /* OpenBSD */)
+		mountinfo.FSType = getInfo(r, "Fstypename", "F_fstypename" /* OpenBSD */)
+		mountinfo.Source = getInfo(r, "Mntfromname", "F_mntfromname" /* OpenBSD */)
 
 		if filter != nil {
 			// filter out entries we're not interested in
