@@ -455,3 +455,36 @@ func TestMountedRoot(t *testing.T) {
 		}
 	}
 }
+
+func TestMountedShadowMount(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root required")
+	}
+
+	var (
+		tmp                = t.TempDir()
+		mount              = tmp + "/sub1"
+		shadowedMountpoint = tmp + "/sub1/sub2"
+	)
+
+	err := os.MkdirAll(shadowedMountpoint, 0o700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a mountpoint that will be shadowed.
+	if err := tMount(t, "tmpfs", shadowedMountpoint, "tmpfs", 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	// Create a mountpoint that shadows the mountpoint.
+	if err := tMount(t, "tmpfs", mount, "tmpfs", 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	isMnt, err := Mounted(shadowedMountpoint)
+	if !isMnt {
+		t.Errorf("Mounted(%q): expected to return true for a shadow mount", shadowedMountpoint)
+	}
+	if err != nil {
+		t.Errorf("Mounted(%q): expected no error, got error: %q", shadowedMountpoint, err)
+	}
+}

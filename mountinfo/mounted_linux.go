@@ -1,6 +1,8 @@
 package mountinfo
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -87,15 +89,18 @@ func mountedFast(path string) (mounted, sure bool, err error) {
 }
 
 func mounted(path string) (bool, error) {
-	path, err := normalizePath(path)
+	normalizedPath, err := normalizePath(path)
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		return mountedByMountinfo(path)
+	}
 	if err != nil {
 		return false, err
 	}
-	mounted, sure, err := mountedFast(path)
+	mounted, sure, err := mountedFast(normalizedPath)
 	if sure && err == nil {
 		return mounted, nil
 	}
 
 	// Fallback to parsing mountinfo.
-	return mountedByMountinfo(path)
+	return mountedByMountinfo(normalizedPath)
 }
