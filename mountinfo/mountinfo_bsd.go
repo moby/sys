@@ -32,7 +32,7 @@ func parseMountTable(filter FilterFunc) ([]*Info, error) {
 		return nil, err
 	}
 
-	var entries = make([]syscall.Statfs_t, count)
+	entries := make([]syscall.Statfs_t, count)
 	_, err = syscall.Getfsstat(entries, 1 /* MNT_WAIT */)
 	if err != nil {
 		return nil, err
