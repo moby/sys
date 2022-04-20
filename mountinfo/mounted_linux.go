@@ -91,7 +91,15 @@ func mountedFast(path string) (mounted, sure bool, err error) {
 func mounted(path string) (bool, error) {
 	normalizedPath, err := normalizePath(path)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
-		return mountedByMountinfo(path)
+		if filepath.IsAbs(path) {
+			return mountedByMountinfo(path)
+		} else {
+			if absPath, err := filepath.Abs(path); err != nil {
+				return false, err
+			} else {
+				return mountedByMountinfo(absPath)
+			}
+		}
 	}
 	if err != nil {
 		return false, err
