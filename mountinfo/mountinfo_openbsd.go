@@ -1,16 +1,19 @@
 package mountinfo
 
-import "golang.org/x/sys/unix"
+import (
+	"unsafe"
+
+	"golang.org/x/sys/unix"
+)
 
 func int8SliceToString(is []int8) string {
-	var bs []byte
-	for _, i := range is {
-		if i == 0 {
+	for i := range is {
+		if is[i] == 0 {
+			is = is[:i]
 			break
 		}
-		bs = append(bs, byte(i))
 	}
-	return string(bs)
+	return *(*string)(unsafe.Pointer(&is))
 }
 
 func getMountinfo(entry *unix.Statfs_t) *Info {
