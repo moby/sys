@@ -19,6 +19,13 @@ test: test-local
 		(cd $$p; go test $(RUN_VIA_SUDO) -v .); \
 	done
 
+.PHONY: tidy
+tidy:
+	set -eu; \
+		for p in $(PACKAGES); do \
+		(cd $$p; go mod tidy); \
+	done
+
 # Test the mount module against the local mountinfo source code instead of the
 # release specified in its go.mod. This allows catching regressions / breaking
 # changes in mountinfo.
