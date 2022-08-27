@@ -1,11 +1,9 @@
-package system // import "github.com/docker/docker/pkg/system"
+package sequential
 
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -13,136 +11,6 @@ import (
 
 	"golang.org/x/sys/windows"
 )
-
-const (
-	// SddlAdministratorsLocalSystem is local administrators plus NT AUTHORITY\System
-	SddlAdministratorsLocalSystem = "D:P(A;OICI;GA;;;BA)(A;OICI;GA;;;SY)"
-)
-
-// MkdirAllWithACL is a wrapper for MkdirAll that creates a directory
-// with an appropriate SDDL defined ACL.
-func MkdirAllWithACL(path string, perm os.FileMode, sddl string) error {
-	return mkdirall(path, true, sddl)
-}
-
-// MkdirAll implementation that is volume path aware for Windows. It can be used
-// as a drop-in replacement for os.MkdirAll()
-func MkdirAll(path string, _ os.FileMode) error {
-	return mkdirall(path, false, "")
-}
-
-// mkdirall is a custom version of os.MkdirAll modified for use on Windows
-// so that it is both volume path aware, and can create a directory with
-// a DACL.
-func mkdirall(path string, applyACL bool, sddl string) error {
-	if re := regexp.MustCompile(`^\\\\\?\\Volume{[a-z0-9-]+}$`); re.MatchString(path) {
-		return nil
-	}
-
-	// The rest of this method is largely copied from os.MkdirAll and should be kept
-	// as-is to ensure compatibility.
-
-	// Fast path: if we can tell whether path is a directory or file, stop with success or error.
-	dir, err := os.Stat(path)
-	if err == nil {
-		if dir.IsDir() {
-			return nil
-		}
-		return &os.PathError{
-			Op:   "mkdir",
-			Path: path,
-			Err:  syscall.ENOTDIR,
-		}
-	}
-
-	// Slow path: make sure parent exists and then call Mkdir for path.
-	i := len(path)
-	for i > 0 && os.IsPathSeparator(path[i-1]) { // Skip trailing path separator.
-		i--
-	}
-
-	j := i
-	for j > 0 && !os.IsPathSeparator(path[j-1]) { // Scan backward over element.
-		j--
-	}
-
-	if j > 1 {
-		// Create parent
-		err = mkdirall(path[0:j-1], false, sddl)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Parent now exists; invoke os.Mkdir or mkdirWithACL and use its result.
-	if applyACL {
-		err = mkdirWithACL(path, sddl)
-	} else {
-		err = os.Mkdir(path, 0)
-	}
-
-	if err != nil {
-		// Handle arguments like "foo/." by
-		// double-checking that directory doesn't exist.
-		dir, err1 := os.Lstat(path)
-		if err1 == nil && dir.IsDir() {
-			return nil
-		}
-		return err
-	}
-	return nil
-}
-
-// mkdirWithACL creates a new directory. If there is an error, it will be of
-// type *PathError. .
-//
-// This is a modified and combined version of os.Mkdir and windows.Mkdir
-// in golang to cater for creating a directory am ACL permitting full
-// access, with inheritance, to any subfolder/file for Built-in Administrators
-// and Local System.
-func mkdirWithACL(name string, sddl string) error {
-	sa := windows.SecurityAttributes{Length: 0}
-	sd, err := windows.SecurityDescriptorFromString(sddl)
-	if err != nil {
-		return &os.PathError{Op: "mkdir", Path: name, Err: err}
-	}
-	sa.Length = uint32(unsafe.Sizeof(sa))
-	sa.InheritHandle = 1
-	sa.SecurityDescriptor = sd
-
-	namep, err := windows.UTF16PtrFromString(name)
-	if err != nil {
-		return &os.PathError{Op: "mkdir", Path: name, Err: err}
-	}
-
-	e := windows.CreateDirectory(namep, &sa)
-	if e != nil {
-		return &os.PathError{Op: "mkdir", Path: name, Err: e}
-	}
-	return nil
-}
-
-// IsAbs is a platform-specific wrapper for filepath.IsAbs. On Windows,
-// golang filepath.IsAbs does not consider a path \windows\system32 as absolute
-// as it doesn't start with a drive-letter/colon combination. However, in
-// docker we need to verify things such as WORKDIR /windows/system32 in
-// a Dockerfile (which gets translated to \windows\system32 when being processed
-// by the daemon. This SHOULD be treated as absolute from a docker processing
-// perspective.
-func IsAbs(path string) bool {
-	if filepath.IsAbs(path) || strings.HasPrefix(path, string(os.PathSeparator)) {
-		return true
-	}
-	return false
-}
-
-// The origin of the functions below here are the golang OS and windows packages,
-// slightly modified to only cope with files, not directories due to the
-// specific use case.
-//
-// The alteration is to allow a file on Windows to be opened with
-// FILE_FLAG_SEQUENTIAL_SCAN (particular for docker load), to avoid eating
-// the standby list, particularly when accessing large files such as layer.tar.
 
 // CreateSequential creates the named file with mode 0666 (before umask), truncating
 // it if it already exists. If successful, methods on the returned
@@ -246,6 +114,7 @@ var randmu sync.Mutex
 func reseed() uint32 {
 	return uint32(time.Now().UnixNano() + int64(os.Getpid()))
 }
+
 func nextSuffix() string {
 	randmu.Lock()
 	r := rand
@@ -277,7 +146,7 @@ func TempFileSequential(dir, prefix string) (f *os.File, err error) {
 	nconflict := 0
 	for i := 0; i < 10000; i++ {
 		name := filepath.Join(dir, prefix+nextSuffix())
-		f, err = OpenFileSequential(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+		f, err = OpenFileSequential(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 		if os.IsExist(err) {
 			if nconflict++; nconflict > 10 {
 				randmu.Lock()
