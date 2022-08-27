@@ -12,39 +12,39 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// CreateSequential creates the named file with mode 0666 (before umask), truncating
+// Create creates the named file with mode 0666 (before umask), truncating
 // it if it already exists. If successful, methods on the returned
 // File can be used for I/O; the associated file descriptor has mode
 // O_RDWR.
 // If there is an error, it will be of type *PathError.
-func CreateSequential(name string) (*os.File, error) {
-	return OpenFileSequential(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0)
+func Create(name string) (*os.File, error) {
+	return OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0)
 }
 
-// OpenSequential opens the named file for reading. If successful, methods on
+// Open opens the named file for reading. If successful, methods on
 // the returned file can be used for reading; the associated file
 // descriptor has mode O_RDONLY.
 // If there is an error, it will be of type *PathError.
-func OpenSequential(name string) (*os.File, error) {
-	return OpenFileSequential(name, os.O_RDONLY, 0)
+func Open(name string) (*os.File, error) {
+	return OpenFile(name, os.O_RDONLY, 0)
 }
 
-// OpenFileSequential is the generalized open call; most users will use Open
+// OpenFile is the generalized open call; most users will use Open
 // or Create instead.
 // If there is an error, it will be of type *PathError.
-func OpenFileSequential(name string, flag int, _ os.FileMode) (*os.File, error) {
+func OpenFile(name string, flag int, _ os.FileMode) (*os.File, error) {
 	if name == "" {
 		return nil, &os.PathError{Op: "open", Path: name, Err: syscall.ENOENT}
 	}
-	r, errf := windowsOpenFileSequential(name, flag, 0)
-	if errf == nil {
+	r, err := openFileSequential(name, flag, 0)
+	if err == nil {
 		return r, nil
 	}
-	return nil, &os.PathError{Op: "open", Path: name, Err: errf}
+	return nil, &os.PathError{Op: "open", Path: name, Err: err}
 }
 
-func windowsOpenFileSequential(name string, flag int, _ os.FileMode) (file *os.File, err error) {
-	r, e := windowsOpenSequential(name, flag|windows.O_CLOEXEC, 0)
+func openFileSequential(name string, flag int, _ os.FileMode) (file *os.File, err error) {
+	r, e := openSequential(name, flag|windows.O_CLOEXEC, 0)
 	if e != nil {
 		return nil, e
 	}
@@ -58,7 +58,7 @@ func makeInheritSa() *windows.SecurityAttributes {
 	return &sa
 }
 
-func windowsOpenSequential(path string, mode int, _ uint32) (fd windows.Handle, err error) {
+func openSequential(path string, mode int, _ uint32) (fd windows.Handle, err error) {
 	if len(path) == 0 {
 		return windows.InvalidHandle, windows.ERROR_FILE_NOT_FOUND
 	}
@@ -107,7 +107,7 @@ func windowsOpenSequential(path string, mode int, _ uint32) (fd windows.Handle, 
 	return h, e
 }
 
-// Helpers for TempFileSequential
+// Helpers for CreateTemp
 var rand uint32
 var randmu sync.Mutex
 
@@ -127,7 +127,7 @@ func nextSuffix() string {
 	return strconv.Itoa(int(1e9 + r%1e9))[1:]
 }
 
-// TempFileSequential is a copy of os.CreateTemp, modified to use sequential
+// CreateTemp is a copy of os.CreateTemp, modified to use sequential
 // file access. Below is the original comment from golang:
 // TempFile creates a new temporary file in the directory dir
 // with a name beginning with prefix, opens the file for reading
@@ -138,7 +138,7 @@ func nextSuffix() string {
 // will not choose the same file. The caller can use f.Name()
 // to find the pathname of the file. It is the caller's responsibility
 // to remove the file when no longer needed.
-func TempFileSequential(dir, prefix string) (f *os.File, err error) {
+func CreateTemp(dir, prefix string) (f *os.File, err error) {
 	if dir == "" {
 		dir = os.TempDir()
 	}
@@ -146,7 +146,7 @@ func TempFileSequential(dir, prefix string) (f *os.File, err error) {
 	nconflict := 0
 	for i := 0; i < 10000; i++ {
 		name := filepath.Join(dir, prefix+nextSuffix())
-		f, err = OpenFileSequential(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+		f, err = OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 		if os.IsExist(err) {
 			if nconflict++; nconflict > 10 {
 				randmu.Lock()
