@@ -37,8 +37,9 @@ func FollowSymlinkInScope(path, root string) (string, error) {
 // Trying to break out from `root` does not constitute an error.
 //
 // Example:
-//   If /foo/bar -> /outside,
-//   FollowSymlinkInScope("/foo/bar", "/foo") == "/foo/outside" instead of "/outside"
+//
+//	If /foo/bar -> /outside,
+//	FollowSymlinkInScope("/foo/bar", "/foo") == "/foo/outside" instead of "/outside"
 //
 // IMPORTANT: it is the caller's responsibility to call evalSymlinksInScope *after* relevant symlinks
 // are created and not to create subsequently, additional symlinks that could potentially make a
