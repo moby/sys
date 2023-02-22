@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/moby/sys/mountinfo"
 	"golang.org/x/sys/unix"
+
+	"github.com/moby/sys/mountinfo"
 )
 
 // Mount will mount filesystem according to the specified configuration.

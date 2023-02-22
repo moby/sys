@@ -10,8 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/moby/sys/mountinfo"
 	"golang.org/x/sys/unix"
+
+	"github.com/moby/sys/mountinfo"
 )
 
 func TestMountOptionsParsing(t *testing.T) {
