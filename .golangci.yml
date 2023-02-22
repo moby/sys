@@ -1,5 +1,13 @@
 linters:
   enable:
-    - unconvert
     - errorlint
+    - gci
     - gofumpt
+    - unconvert
+
+linters-settings:
+  gci:
+    sections:
+    - standard
+    - default
+    - prefix(github.com/moby/sys)
