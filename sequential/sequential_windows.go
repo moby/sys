@@ -11,26 +11,35 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// Create creates the named file with mode 0666 (before umask), truncating
-// it if it already exists. If successful, methods on the returned
-// File can be used for I/O; the associated file descriptor has mode
-// O_RDWR.
-// If there is an error, it will be of type *PathError.
+// Create is a copy of [os.Create], modified to use sequential file access.
+//
+// It uses [windows.FILE_FLAG_SEQUENTIAL_SCAN] rather than [windows.FILE_ATTRIBUTE_NORMAL]
+// as implemented in golang. Refer to the [Win32 API documentation] for details
+// on sequential file access.
+//
+// [Win32 API documentation]: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#FILE_FLAG_SEQUENTIAL_SCAN
 func Create(name string) (*os.File, error) {
 	return openFileSequential(name, windows.O_RDWR|windows.O_CREAT|windows.O_TRUNC)
 }
 
-// Open opens the named file for reading. If successful, methods on
-// the returned file can be used for reading; the associated file
-// descriptor has mode O_RDONLY.
-// If there is an error, it will be of type *PathError.
+// Open is a copy of [os.Open], modified to use sequential file access.
+//
+// It uses [windows.FILE_FLAG_SEQUENTIAL_SCAN] rather than [windows.FILE_ATTRIBUTE_NORMAL]
+// as implemented in golang. Refer to the [Win32 API documentation] for details
+// on sequential file access.
+//
+// [Win32 API documentation]: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#FILE_FLAG_SEQUENTIAL_SCAN
 func Open(name string) (*os.File, error) {
 	return openFileSequential(name, windows.O_RDONLY)
 }
 
-// OpenFile is the generalized open call; most users will use Open
-// or Create instead.
-// If there is an error, it will be of type *PathError.
+// OpenFile is a copy of [os.OpenFile], modified to use sequential file access.
+//
+// It uses [windows.FILE_FLAG_SEQUENTIAL_SCAN] rather than [windows.FILE_ATTRIBUTE_NORMAL]
+// as implemented in golang. Refer to the [Win32 API documentation] for details
+// on sequential file access.
+//
+// [Win32 API documentation]: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#FILE_FLAG_SEQUENTIAL_SCAN
 func OpenFile(name string, flag int, _ os.FileMode) (*os.File, error) {
 	return openFileSequential(name, flag)
 }
@@ -96,7 +105,7 @@ func openSequential(path string, mode int) (fd windows.Handle, err error) {
 		createmode = windows.OPEN_EXISTING
 	}
 	// Use FILE_FLAG_SEQUENTIAL_SCAN rather than FILE_ATTRIBUTE_NORMAL as implemented in golang.
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx
+	// https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#FILE_FLAG_SEQUENTIAL_SCAN
 	h, e := windows.CreateFile(pathp, access, sharemode, sa, createmode, windows.FILE_FLAG_SEQUENTIAL_SCAN, 0)
 	return h, e
 }
@@ -121,17 +130,13 @@ func nextSuffix() string {
 	return strconv.Itoa(int(1e9 + r%1e9))[1:]
 }
 
-// CreateTemp is a copy of os.CreateTemp, modified to use sequential
-// file access. Below is the original comment from golang:
-// TempFile creates a new temporary file in the directory dir
-// with a name beginning with prefix, opens the file for reading
-// and writing, and returns the resulting *os.File.
-// If dir is the empty string, TempFile uses the default directory
-// for temporary files (see os.TempDir).
-// Multiple programs calling TempFile simultaneously
-// will not choose the same file. The caller can use f.Name()
-// to find the pathname of the file. It is the caller's responsibility
-// to remove the file when no longer needed.
+// CreateTemp is a copy of [os.CreateTemp], modified to use sequential file access.
+//
+// It uses [windows.FILE_FLAG_SEQUENTIAL_SCAN] rather than [windows.FILE_ATTRIBUTE_NORMAL]
+// as implemented in golang. Refer to the [Win32 API documentation] for details
+// on sequential file access.
+//
+// [Win32 API documentation]: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#FILE_FLAG_SEQUENTIAL_SCAN
 func CreateTemp(dir, prefix string) (f *os.File, err error) {
 	if dir == "" {
 		dir = os.TempDir()
