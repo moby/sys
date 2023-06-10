@@ -17,7 +17,7 @@ import (
 // O_RDWR.
 // If there is an error, it will be of type *PathError.
 func Create(name string) (*os.File, error) {
-	return OpenFile(name, windows.O_RDWR|windows.O_CREAT|windows.O_TRUNC, 0)
+	return openFileSequential(name, windows.O_RDWR|windows.O_CREAT|windows.O_TRUNC)
 }
 
 // Open opens the named file for reading. If successful, methods on
@@ -25,27 +25,23 @@ func Create(name string) (*os.File, error) {
 // descriptor has mode O_RDONLY.
 // If there is an error, it will be of type *PathError.
 func Open(name string) (*os.File, error) {
-	return OpenFile(name, windows.O_RDONLY, 0)
+	return openFileSequential(name, windows.O_RDONLY)
 }
 
 // OpenFile is the generalized open call; most users will use Open
 // or Create instead.
 // If there is an error, it will be of type *PathError.
 func OpenFile(name string, flag int, _ os.FileMode) (*os.File, error) {
-	if name == "" {
-		return nil, &os.PathError{Op: "open", Path: name, Err: windows.ERROR_FILE_NOT_FOUND}
-	}
-	r, err := openFileSequential(name, flag)
-	if err == nil {
-		return r, nil
-	}
-	return nil, &os.PathError{Op: "open", Path: name, Err: err}
+	return openFileSequential(name, flag)
 }
 
 func openFileSequential(name string, flag int) (file *os.File, err error) {
+	if name == "" {
+		return nil, &os.PathError{Op: "open", Path: name, Err: windows.ERROR_FILE_NOT_FOUND}
+	}
 	r, e := openSequential(name, flag|windows.O_CLOEXEC)
 	if e != nil {
-		return nil, e
+		return nil, &os.PathError{Op: "open", Path: name, Err: e}
 	}
 	return os.NewFile(uintptr(r), name), nil
 }
@@ -144,7 +140,7 @@ func CreateTemp(dir, prefix string) (f *os.File, err error) {
 	nconflict := 0
 	for i := 0; i < 10000; i++ {
 		name := filepath.Join(dir, prefix+nextSuffix())
-		f, err = OpenFile(name, windows.O_RDWR|windows.O_CREAT|windows.O_EXCL, 0o600)
+		f, err = openFileSequential(name, windows.O_RDWR|windows.O_CREAT|windows.O_EXCL)
 		if os.IsExist(err) {
 			if nconflict++; nconflict > 10 {
 				randmu.Lock()
