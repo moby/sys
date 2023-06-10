@@ -35,15 +35,15 @@ func OpenFile(name string, flag int, _ os.FileMode) (*os.File, error) {
 	if name == "" {
 		return nil, &os.PathError{Op: "open", Path: name, Err: windows.ERROR_FILE_NOT_FOUND}
 	}
-	r, err := openFileSequential(name, flag, 0)
+	r, err := openFileSequential(name, flag)
 	if err == nil {
 		return r, nil
 	}
 	return nil, &os.PathError{Op: "open", Path: name, Err: err}
 }
 
-func openFileSequential(name string, flag int, _ os.FileMode) (file *os.File, err error) {
-	r, e := openSequential(name, flag|windows.O_CLOEXEC, 0)
+func openFileSequential(name string, flag int) (file *os.File, err error) {
+	r, e := openSequential(name, flag|windows.O_CLOEXEC)
 	if e != nil {
 		return nil, e
 	}
@@ -57,7 +57,7 @@ func makeInheritSa() *windows.SecurityAttributes {
 	return &sa
 }
 
-func openSequential(path string, mode int, _ uint32) (fd windows.Handle, err error) {
+func openSequential(path string, mode int) (fd windows.Handle, err error) {
 	if len(path) == 0 {
 		return windows.InvalidHandle, windows.ERROR_FILE_NOT_FOUND
 	}
