@@ -71,7 +71,8 @@ func RecursiveUnmount(target string) error {
 		if err != nil {
 			if i == lastMount {
 				if suberr != nil {
-					return fmt.Errorf("%w (possible cause: %s)", err, suberr)
+					// TODO: switch to %w for suberr once we stop supporting go < 1.20.
+					return fmt.Errorf("%w (possible cause: %s)", err, suberr.Error())
 				}
 				return err
 			}
