@@ -5,8 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-
-	"github.com/moby/buildkit/util/bklog"
 )
 
 var appContextCache context.Context
@@ -36,7 +34,6 @@ func Context() context.Context {
 				cancel()
 				retries++
 				if retries >= exitLimit {
-					bklog.G(ctx).Errorf("got %d SIGTERM/SIGINTs, forcing shutdown", retries)
 					os.Exit(1)
 				}
 			}
