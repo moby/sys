@@ -7,8 +7,10 @@ import (
 	"sync"
 )
 
-var appContextCache context.Context
-var appContextOnce sync.Once
+var (
+	appContextCache context.Context
+	appContextOnce  sync.Once
+)
 
 // Context returns a static context that reacts to termination signals of the
 // running process. Useful in CLI tools.
