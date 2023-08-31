@@ -1,4 +1,4 @@
-PACKAGES ?= mountinfo mount sequential signal symlink
+PACKAGES ?= appcontext mountinfo mount sequential signal symlink
 BINDIR ?= _build/bin
 CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
 	freebsd/amd64 openbsd/amd64 darwin/amd64 darwin/arm64 windows/amd64
