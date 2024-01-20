@@ -32,7 +32,7 @@ tidy:
 .PHONY: test-local
 test-local: MOD = -modfile=go-local.mod
 test-local:
-	echo 'replace github.com/moby/sys/mountinfo => ../mountinfo' | cat mount/go.mod - > mount/go-local.mod
+	echo 'replace github.com/khulnasoft-lab/docker-sys/mountinfo => ../mountinfo' | cat mount/go.mod - > mount/go-local.mod
 	# Run go mod tidy to make sure mountinfo dependency versions are met.
 	cd mount && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .
 	$(RM) mount/go-local.*
