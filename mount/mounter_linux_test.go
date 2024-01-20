@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/moby/sys/mountinfo"
+	"github.com/khulnasoft-lab/docker-sys/mountinfo"
 )
 
 func TestMount(t *testing.T) {

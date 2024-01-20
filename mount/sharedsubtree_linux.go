@@ -1,6 +1,6 @@
 package mount
 
-import "github.com/moby/sys/mountinfo"
+import "github.com/khulnasoft-lab/docker-sys/mountinfo"
 
 // MakeShared ensures a mounted filesystem has the SHARED mount option enabled.
 // See the supported options in flags.go for further reference.

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/moby/sys/mountinfo"
+	"github.com/khulnasoft-lab/docker-sys/mountinfo"
 	"golang.org/x/sys/unix"
 )
 
