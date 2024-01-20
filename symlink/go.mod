@@ -1,4 +1,4 @@
-module github.com/moby/sys/symlink
+module github.com/khulnasoft-lab/docker-sys/symlink
 
 go 1.16
 
