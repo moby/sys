@@ -1,4 +1,4 @@
-module github.com/moby/sys/signal
+module github.com/khulnasoft-lab/docker-sys/signal
 
 go 1.16
 
