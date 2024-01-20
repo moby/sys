@@ -1,4 +1,4 @@
-module github.com/moby/sys/user
+module github.com/khulnasoft-lab/docker-sys/user
 
 go 1.17
 
