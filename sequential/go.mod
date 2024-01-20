@@ -1,4 +1,4 @@
-module github.com/moby/sys/sequential
+module github.com/khulnasoft-lab/docker-sys/sequential
 
 go 1.17
 
