@@ -16,14 +16,18 @@ clean:
 test: test-local
 	set -eu; \
 	for p in $(PACKAGES); do \
-		(cd $$p; go test $(RUN_VIA_SUDO) -v .); \
+		if $p = user && go version | grep -qv go1.18; then \
+			(cd $$p; go test $(RUN_VIA_SUDO) -v .); \
+		fi \
 	done
 
 .PHONY: tidy
 tidy:
 	set -eu; \
-		for p in $(PACKAGES); do \
-		(cd $$p; go mod tidy); \
+	for p in $(PACKAGES); do \
+		if $p = user && go version | grep -qv go1.18; then \
+			(cd $$p; go mod tidy); \
+		fi \
 	done
 
 # Test the mount module against the local mountinfo source code instead of the
@@ -42,9 +46,11 @@ lint: $(BINDIR)/golangci-lint
 	$(BINDIR)/golangci-lint version
 	set -eu; \
 	for p in $(PACKAGES); do \
-		(cd $$p; \
-		go mod download; \
-		../$(BINDIR)/golangci-lint run); \
+		if $p = user && go version | grep -qv go1.18; then \
+			(cd $$p; \
+			go mod download; \
+			../$(BINDIR)/golangci-lint run); \
+		fi \
 	done
 
 $(BINDIR)/golangci-lint: $(BINDIR)
