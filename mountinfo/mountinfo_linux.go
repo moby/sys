@@ -81,10 +81,13 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		}
 
 		p := &Info{
-			ID:     toInt(fields[0]),
-			Parent: toInt(fields[1]),
-			Major:  toInt(major),
-			Minor:  toInt(minor),
+			ID:         toInt(fields[0]),
+			Parent:     toInt(fields[1]),
+			Major:      toInt(major),
+			Minor:      toInt(minor),
+			Options:    fields[5],
+			Optional:   strings.Join(fields[6:sepIdx], " "), // zero or more optional fields
+			VFSOptions: fields[sepIdx+3],
 		}
 
 		p.Mountpoint, err = unescape(fields[4])
@@ -99,17 +102,11 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing '%s' failed: source: %w", fields[sepIdx+2], err)
 		}
-		p.VFSOptions = fields[sepIdx+3]
 
 		p.Root, err = unescape(fields[3])
 		if err != nil {
 			return nil, fmt.Errorf("parsing '%s' failed: root: %w", fields[3], err)
 		}
-
-		p.Options = fields[5]
-
-		// zero or more optional fields
-		p.Optional = strings.Join(fields[6:sepIdx], " ")
 
 		// Run the filter after parsing all fields.
 		var skip, stop bool
