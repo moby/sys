@@ -771,3 +771,32 @@ func TestUnescape(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkUnescape(b *testing.B) {
+	testCases := []string{
+		"",
+		"/",
+		"/some/longer/path",
+		"/path\\040with\\040spaces",
+		"/path/with\\134backslash",
+		"/tab\\011in/path",
+		`/path/"with'quotes`,
+		`/path/"with'quotes,\040space,\011tab`,
+		`\12`,
+		`\134`,
+		`"'"'"'`,
+		`/\1345`,
+		`/\12x`,
+		`\0`,
+		`\x`,
+		"\\\\",
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for x := 0; x < len(testCases); x++ {
+			_, _ = unescape(testCases[x])
+		}
+	}
+}
