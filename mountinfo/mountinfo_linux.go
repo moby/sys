@@ -75,9 +75,16 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 			}
 		}
 
+		major, minor, ok := strings.Cut(fields[2], ":")
+		if !ok {
+			return nil, fmt.Errorf("parsing '%s' failed: unexpected major:minor pair %s", text, fields[2])
+		}
+
 		p := &Info{
 			ID:     toInt(fields[0]),
 			Parent: toInt(fields[1]),
+			Major:  toInt(major),
+			Minor:  toInt(minor),
 		}
 
 		p.Mountpoint, err = unescape(fields[4])
@@ -93,13 +100,6 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 			return nil, fmt.Errorf("parsing '%s' failed: source: %w", fields[sepIdx+2], err)
 		}
 		p.VFSOptions = fields[sepIdx+3]
-
-		mm := strings.SplitN(fields[2], ":", 3)
-		if len(mm) != 2 {
-			return nil, fmt.Errorf("parsing '%s' failed: unexpected major:minor pair %s", text, mm)
-		}
-		p.Major = toInt(mm[0])
-		p.Minor = toInt(mm[1])
 
 		p.Root, err = unescape(fields[3])
 		if err != nil {
