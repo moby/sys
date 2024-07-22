@@ -7,7 +7,6 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -86,7 +85,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := ioutil.WriteFile(genName, src, fi.Mode().Perm()); err != nil {
+	if err := os.WriteFile(genName, src, fi.Mode().Perm()); err != nil {
 		log.Fatal(err)
 	}
 }
