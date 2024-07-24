@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"syscall"
 )
 
@@ -22,16 +23,9 @@ const (
 	linuxCapVer3 = 0x20080522
 )
 
-var (
-	capVers    uint32
-	capLastCap Cap
-)
+var capLastCap Cap
 
 func init() {
-	var hdr capHeader
-	_ = capget(&hdr, nil)
-	capVers = hdr.version
-
 	if initLastCap() == nil {
 		CAP_LAST_CAP = capLastCap
 		if capLastCap > 31 {
@@ -96,18 +90,27 @@ func mkString(c Capabilities, max CapType) (ret string) {
 	return
 }
 
-func newPid(pid int) (c Capabilities, err error) {
-	switch capVers {
-	case 0:
-		err = errors.New("unable to get capability version from the kernel")
+var capVersion = sync.OnceValues(func() (uint32, error) {
+	var hdr capHeader
+	err := capget(&hdr, nil)
+	return hdr.version, err
+})
+
+func newPid(pid int) (c Capabilities, retErr error) {
+	ver, err := capVersion()
+	if err != nil {
+		retErr = fmt.Errorf("unable to get capability version from the kernel: %w", err)
+		return
+	}
+	switch ver {
 	case linuxCapVer1, linuxCapVer2:
-		err = errors.New("old/unsupported capability version (kernel older than 2.6.26?)")
+		retErr = errors.New("old/unsupported capability version (kernel older than 2.6.26?)")
 	default:
 		// Either linuxCapVer3, or an unknown/future version such as v4.
 		// In the latter case, we fall back to v3 hoping the kernel is
 		// backward-compatible to v3.
 		p := new(capsV3)
-		p.hdr.version = capVers
+		p.hdr.version = ver
 		p.hdr.pid = int32(pid)
 		c = p
 	}
