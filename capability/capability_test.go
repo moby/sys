@@ -43,6 +43,10 @@ func TestState(t *testing.T) {
 		}
 	}
 
+	last, err := LastCap()
+	if err != nil {
+		t.Fatal(err)
+	}
 	capf := new(capsFile)
 	capf.data.version = 2
 	for _, tc := range []struct {
@@ -51,9 +55,9 @@ func TestState(t *testing.T) {
 		sets CapType
 		max  Cap
 	}{
-		{"v3", new(capsV3), EFFECTIVE | PERMITTED | BOUNDING, CAP_LAST_CAP},
+		{"v3", new(capsV3), EFFECTIVE | PERMITTED | BOUNDING, last},
 		{"file_v1", new(capsFile), EFFECTIVE | PERMITTED, CAP_AUDIT_CONTROL},
-		{"file_v2", capf, EFFECTIVE | PERMITTED, CAP_LAST_CAP},
+		{"file_v2", capf, EFFECTIVE | PERMITTED, last},
 	} {
 		testEmpty(tc.name, tc.c, tc.sets)
 		tc.c.Fill(CAPS | BOUNDS)
@@ -62,14 +66,14 @@ func TestState(t *testing.T) {
 		tc.c.Clear(CAPS | BOUNDS)
 		testEmpty(tc.name, tc.c, tc.sets)
 		for i := CapType(1); i <= BOUNDING; i <<= 1 {
-			for j := Cap(0); j <= CAP_LAST_CAP; j++ {
+			for j := Cap(0); j <= last; j++ {
 				tc.c.Set(i, j)
 			}
 		}
 		testFull(tc.name, tc.c, tc.sets)
 		testGet(tc.name, tc.c, tc.sets, tc.max)
 		for i := CapType(1); i <= BOUNDING; i <<= 1 {
-			for j := Cap(0); j <= CAP_LAST_CAP; j++ {
+			for j := Cap(0); j <= last; j++ {
 				tc.c.Unset(i, j)
 			}
 		}
