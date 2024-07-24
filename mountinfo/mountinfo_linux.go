@@ -75,7 +75,20 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 			}
 		}
 
-		p := &Info{}
+		major, minor, ok := strings.Cut(fields[2], ":")
+		if !ok {
+			return nil, fmt.Errorf("parsing '%s' failed: unexpected major:minor pair %s", text, fields[2])
+		}
+
+		p := &Info{
+			ID:         toInt(fields[0]),
+			Parent:     toInt(fields[1]),
+			Major:      toInt(major),
+			Minor:      toInt(minor),
+			Options:    fields[5],
+			Optional:   strings.Join(fields[6:sepIdx], " "), // zero or more optional fields
+			VFSOptions: fields[sepIdx+3],
+		}
 
 		p.Mountpoint, err = unescape(fields[4])
 		if err != nil {
@@ -89,27 +102,11 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing '%s' failed: source: %w", fields[sepIdx+2], err)
 		}
-		p.VFSOptions = fields[sepIdx+3]
-
-		// ignore any numbers parsing errors, as there should not be any
-		p.ID, _ = strconv.Atoi(fields[0])
-		p.Parent, _ = strconv.Atoi(fields[1])
-		mm := strings.SplitN(fields[2], ":", 3)
-		if len(mm) != 2 {
-			return nil, fmt.Errorf("parsing '%s' failed: unexpected major:minor pair %s", text, mm)
-		}
-		p.Major, _ = strconv.Atoi(mm[0])
-		p.Minor, _ = strconv.Atoi(mm[1])
 
 		p.Root, err = unescape(fields[3])
 		if err != nil {
 			return nil, fmt.Errorf("parsing '%s' failed: root: %w", fields[3], err)
 		}
-
-		p.Options = fields[5]
-
-		// zero or more optional fields
-		p.Optional = strings.Join(fields[6:sepIdx], " ")
 
 		// Run the filter after parsing all fields.
 		var skip, stop bool
@@ -247,4 +244,11 @@ func unescape(path string) (string, error) {
 	}
 
 	return string(buf[:bufLen]), nil
+}
+
+// toInt converts a string to an int, and ignores any numbers parsing errors,
+// as there should not be any.
+func toInt(s string) int {
+	i, _ := strconv.Atoi(s)
+	return i
 }
