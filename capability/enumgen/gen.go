@@ -12,8 +12,10 @@ import (
 	"strings"
 )
 
-const fileName = "enum.go"
-const genName = "enum_gen.go"
+const (
+	fileName = "enum.go"
+	genName  = "enum_gen.go"
+)
 
 type generator struct {
 	buf  bytes.Buffer
