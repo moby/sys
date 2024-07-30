@@ -9,30 +9,30 @@ package capability
 import "testing"
 
 func TestState(t *testing.T) {
-	testEmpty := func(name string, c Capabilities, whats CapType) {
+	testEmpty := func(name string, c Capabilities, what CapType) {
 		for i := CapType(1); i <= BOUNDING; i <<= 1 {
-			if (i&whats) != 0 && !c.Empty(i) {
+			if (i&what) != 0 && !c.Empty(i) {
 				t.Errorf(name+": capabilities set %q wasn't empty", i)
 			}
 		}
 	}
-	testFull := func(name string, c Capabilities, whats CapType) {
+	testFull := func(name string, c Capabilities, what CapType) {
 		for i := CapType(1); i <= BOUNDING; i <<= 1 {
-			if (i&whats) != 0 && !c.Full(i) {
+			if (i&what) != 0 && !c.Full(i) {
 				t.Errorf(name+": capabilities set %q wasn't full", i)
 			}
 		}
 	}
-	testPartial := func(name string, c Capabilities, whats CapType) {
+	testPartial := func(name string, c Capabilities, what CapType) {
 		for i := CapType(1); i <= BOUNDING; i <<= 1 {
-			if (i&whats) != 0 && (c.Empty(i) || c.Full(i)) {
+			if (i&what) != 0 && (c.Empty(i) || c.Full(i)) {
 				t.Errorf(name+": capabilities set %q wasn't partial", i)
 			}
 		}
 	}
-	testGet := func(name string, c Capabilities, whats CapType, max Cap) {
+	testGet := func(name string, c Capabilities, what CapType, max Cap) {
 		for i := CapType(1); i <= BOUNDING; i <<= 1 {
-			if (i & whats) == 0 {
+			if (i & what) == 0 {
 				continue
 			}
 			for j := Cap(0); j <= max; j++ {
