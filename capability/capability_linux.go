@@ -110,11 +110,11 @@ func newPid(pid int) (c Capabilities, retErr error) {
 	case linuxCapVer1, linuxCapVer2:
 		retErr = errors.New("old/unsupported capability version (kernel older than 2.6.26?)")
 	default:
-		// Either linuxCapVer3, or an unknown/future version such as v4.
-		// In the latter case, we fall back to v3 hoping the kernel is
-		// backward-compatible to v3.
+		// Either linuxCapVer3, or an unknown/future version (such as v4).
+		// In the latter case, we fall back to v3 as the latest version known
+		// to this package, as kernel should be backward-compatible to v3.
 		p := new(capsV3)
-		p.hdr.version = ver
+		p.hdr.version = linuxCapVer3
 		p.hdr.pid = int32(pid)
 		c = p
 	}
