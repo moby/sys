@@ -25,7 +25,11 @@ const (
 )
 
 // LastCap returns highest valid capability of the running kernel.
-var LastCap = sync.OnceValues(func() (Cap, error) {
+func LastCap() (Cap, error) {
+	return lastCap()
+}
+
+var lastCap = sync.OnceValues(func() (Cap, error) {
 	f, err := os.Open("/proc/sys/kernel/cap_last_cap")
 	if err != nil {
 		return 0, err
@@ -47,7 +51,7 @@ var LastCap = sync.OnceValues(func() (Cap, error) {
 })
 
 func capUpperMask() uint32 {
-	last, err := LastCap()
+	last, err := lastCap()
 	if err != nil || last < 32 {
 		return 0
 	}
@@ -55,7 +59,7 @@ func capUpperMask() uint32 {
 }
 
 func mkStringCap(c Capabilities, which CapType) (ret string) {
-	last, err := LastCap()
+	last, err := lastCap()
 	if err != nil {
 		return ""
 	}
