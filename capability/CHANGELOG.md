@@ -4,6 +4,14 @@ This file documents all notable changes made to this project since the initial f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2024-08-01
+
+This is a maintenance release, fixing a few minor issues.
+
+### Fixed
+ * Fixed future kernel compatibility, for real this time. (#11)
+ * Fixed [LastCap] to be a function. (#12)
+
 ## [0.1.0] - 2024-07-31
 
 This is an initial release since the fork.
@@ -37,5 +45,6 @@ This is an initial release since the fork.
 [LastCap]: https://pkg.go.dev/github.com/kolyshkin/capability#LastCap
 
 <!-- minor releases -->
+[0.1.1]: https://github.com/kolyshkin/capability/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kolyshkin/capability/compare/42c35b4376354fd5...v0.1.0
 
