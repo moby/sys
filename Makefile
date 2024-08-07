@@ -1,4 +1,4 @@
-PACKAGES ?= mountinfo mount sequential signal symlink user
+PACKAGES ?= mountinfo mount sequential signal symlink user userns # IMPORTANT: when updating this list, also update the conditional one in .github/workflows/test.yml
 BINDIR ?= _build/bin
 CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
 	freebsd/amd64 openbsd/amd64 darwin/amd64 darwin/arm64 windows/amd64
@@ -16,18 +16,14 @@ clean:
 test: test-local
 	set -eu; \
 	for p in $(PACKAGES); do \
-		if $p = user && go version | grep -qv go1.18; then \
-			(cd $$p; go test $(RUN_VIA_SUDO) -v .); \
-		fi \
+		(cd $$p; go test $(RUN_VIA_SUDO) -v .); \
 	done
 
 .PHONY: tidy
 tidy:
 	set -eu; \
 	for p in $(PACKAGES); do \
-		if $p = user && go version | grep -qv go1.18; then \
-			(cd $$p; go mod tidy); \
-		fi \
+		(cd $$p; go mod tidy); \
 	done
 
 # Test the mount module against the local mountinfo source code instead of the
@@ -46,11 +42,9 @@ lint: $(BINDIR)/golangci-lint
 	$(BINDIR)/golangci-lint version
 	set -eu; \
 	for p in $(PACKAGES); do \
-		if $p = user && go version | grep -qv go1.18; then \
-			(cd $$p; \
-			go mod download; \
-			../$(BINDIR)/golangci-lint run); \
-		fi \
+		(cd $$p; \
+		go mod download; \
+		../$(BINDIR)/golangci-lint run); \
 	done
 
 $(BINDIR)/golangci-lint: $(BINDIR)
