@@ -61,18 +61,8 @@ func GetMountsFromReader(r io.Reader, filter FilterFunc) ([]*Info, error) {
 
 		// separator field
 		sepIdx := numFields - 4
-		// In Linux <= 3.9 mounting a cifs with spaces in a share
-		// name (like "//srv/My Docs") _may_ end up having a space
-		// in the last field of mountinfo (like "unc=//serv/My Docs").
-		// Since kernel 3.10-rc1, cifs option "unc=" is ignored,
-		// so spaces should not appear.
-		//
-		// Check for a separator, and work around the spaces bug
-		for fields[sepIdx] != "-" {
-			sepIdx--
-			if sepIdx == 5 {
-				return nil, fmt.Errorf("parsing '%s' failed: missing - separator", text)
-			}
+		if fields[sepIdx] != "-" {
+			return nil, fmt.Errorf("parsing '%s' failed: missing - separator", text)
 		}
 
 		major, minor, ok := strings.Cut(fields[2], ":")
