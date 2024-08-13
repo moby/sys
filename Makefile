@@ -12,19 +12,25 @@ all: clean lint test cross
 clean:
 	$(RM) mount/go-local.*
 
-.PHONY: test
-test: test-local
+.PHONY: foreach
+foreach: ## Run $(CMD) for every package.
+	@if test -z "$(CMD)"; then \
+		echo 'Usage: make foreach CMD="commands to run for every package"'; \
+		exit 1; \
+	fi
 	set -eu; \
 	for p in $(PACKAGES); do \
-		(cd $$p; go test $(RUN_VIA_SUDO) -v .); \
+		(cd $$p; $(CMD);) \
 	done
 
+.PHONY: test
+test: test-local
+test: CMD=go test $(RUN_VIA_SUDO) -v .
+test: foreach
+
 .PHONY: tidy
-tidy:
-	set -eu; \
-	for p in $(PACKAGES); do \
-		(cd $$p; go mod tidy); \
-	done
+tidy: CMD=go mod tidy
+tidy: foreach
 
 # Test the mount module against the local mountinfo source code instead of the
 # release specified in its go.mod. This allows catching regressions / breaking
@@ -39,13 +45,10 @@ test-local:
 
 .PHONY: lint
 lint: $(BINDIR)/golangci-lint
+lint: CMD=go mod download; ../$(BINDIR)/golangci-lint run
+lint: foreach
+lint:
 	$(BINDIR)/golangci-lint version
-	set -eu; \
-	for p in $(PACKAGES); do \
-		(cd $$p; \
-		go mod download; \
-		../$(BINDIR)/golangci-lint run); \
-	done
 
 $(BINDIR)/golangci-lint: $(BINDIR)
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINDIR) v1.59.1
