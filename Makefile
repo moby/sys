@@ -28,10 +28,6 @@ test: test-local
 test: CMD=go test $(RUN_VIA_SUDO) -v .
 test: foreach
 
-.PHONY: tidy
-tidy: CMD=go mod tidy
-tidy: foreach
-
 # Test the mount module against the local mountinfo source code instead of the
 # release specified in its go.mod. This allows catching regressions / breaking
 # changes in mountinfo.

@@ -21,7 +21,11 @@ jobs:
         echo 'PACKAGES="mountinfo mount sequential signal symlink user"' >> $GITHUB_ENV
     - name: go mod tidy
       run: |
-        make tidy
+        make foreach CMD="go mod tidy"
+        git diff --exit-code
+    - name: go fix
+      run: |
+        make foreach CMD="go fix"
         git diff --exit-code
     - name: Lint
       run: make lint
