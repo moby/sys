@@ -731,43 +731,70 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 }
 
 func TestUnescape(t *testing.T) {
+	// When adding test cases below, be aware that Go interprets \NNN
+	// inside strings enclosed in double quotes in the same way as the
+	// function being tested, so:
+	//  - for input: either escape every backslash character (i.e. \\), or
+	//    enclose the whole string in `backticks` so \NNN is passed as-is;
+	//  - for output: write it like "\040", which is identical to " ".
 	testCases := []struct {
 		input, output string
-		isErr         bool
 	}{
-		{"", "", false},
-		{"/", "/", false},
-		{"/some/longer/path", "/some/longer/path", false},
-		{"/path\\040with\\040spaces", "/path with spaces", false},
-		{"/path/with\\134backslash", "/path/with\\backslash", false},
-		{"/tab\\011in/path", "/tab\tin/path", false},
-		{`/path/"with'quotes`, `/path/"with'quotes`, false},
-		{`/path/"with'quotes,\040space,\011tab`, `/path/"with'quotes, space,	tab`, false},
-		{`\12`, "", true},
-		{`\134`, `\`, false},
-		{`"'"'"'`, `"'"'"'`, false},
-		{`/\1345`, `/\5`, false},
-		{`/\12x`, "", true},
-		{`\0`, "", true},
-		{`\x`, "", true},
-		{"\\\\", "", true},
+		{"", ""},
+		{"/", "/"},
+		{"/some/longer/path", "/some/longer/path"},
+		{`/path\040with\040spaces`, "/path\040with\040spaces"},
+		{"/path/with\\134backslash", "/path/with\\backslash"},
+		{"/tab\\011in/path", "/tab\011in/path"},
+		{`/path/"with'quotes`, `/path/"with'quotes`},
+		{`/path/"with'quotes,\040space,\011tab`, `/path/"with'quotes, space,	tab`},
+		{`\12`, `\12`}, // Not enough digits.
+		{`\134`, `\`},  // Backslash.
+		{`"'"'"'`, `"'"'"'`},
+		{`/\1345`, `/\5`}, // Backslash with extra digit.
+		{`/\12x`, `/\12x`},
+		{`\0`, `\0`},             // Not enough digits.
+		{`\000\000`, "\000\000"}, // NUL (min allowed ASCII value).
+		{`\x`, `\x`},
+		{"\\\\", "\\\\"},
+		{`\177`, "\177"}, // Max allowed ASCII value.
+		{`\222`, `\222`}, // Too large value -- not unescaped.
+		{`Это\040комон\040какой-то`, "Это комон какой-то"}, // Some UTF-8 -- not unescaped.
 	}
 
 	for _, tc := range testCases {
-		res, err := unescape(tc.input)
-		if tc.isErr == true {
-			if err == nil {
-				t.Errorf("Input %q, want error, got nil", tc.input)
-			}
-			// no more checks
-			continue
-		}
+		res := unescape(tc.input)
 		if res != tc.output {
 			t.Errorf("Input %q, want %q, got %q", tc.input, tc.output, res)
 		}
-		if err != nil {
-			t.Errorf("Input %q, want nil, got error %v", tc.input, err)
-			continue
+	}
+}
+
+func BenchmarkUnescape(b *testing.B) {
+	testCases := []string{
+		"",
+		"/",
+		"/some/longer/path",
+		"/path\\040with\\040spaces",
+		"/path/with\\134backslash",
+		"/tab\\011in/path",
+		`/path/"with'quotes`,
+		`/path/"with'quotes,\040space,\011tab`,
+		`\12`,
+		`\134`,
+		`"'"'"'`,
+		`/\1345`,
+		`/\12x`,
+		`\0`,
+		`\x`,
+		"\\\\",
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for x := 0; x < len(testCases); x++ {
+			_ = unescape(testCases[x])
 		}
 	}
 }
