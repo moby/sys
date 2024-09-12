@@ -1,3 +1,3 @@
-module github.com/kolyshkin/capability
+module github.com/moby/sys/capability
 
 go 1.21
