@@ -21,7 +21,7 @@ This is an initial release since the fork.
 
  * The `CAP_LAST_CAP` variable is removed; users need to modify the code to
    use [LastCap] to get the value. [#6]
- * The code now requires Go >= 1.20.
+ * The code now requires Go >= 1.21.
 
 ### Added
  * `go.mod` and `go.sum` files. [#2]
