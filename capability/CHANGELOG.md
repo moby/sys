@@ -42,15 +42,15 @@ This is an initial release since the fork.
  * Removed init function so programs that use this package start faster. [#6]
  * Removed `CAP_LAST_CAP` (use [LastCap] instead). [#6]
 
-<!-- Doc links. TODO: change to new package name. -->
-[Apply]: https://pkg.go.dev/github.com/kolyshkin/capability#Capabilities.Apply
-[LastCap]: https://pkg.go.dev/github.com/kolyshkin/capability#LastCap
+<!-- Doc links. -->
+[Apply]: https://pkg.go.dev/github.com/moby/sys/capability#Capabilities.Apply
+[LastCap]: https://pkg.go.dev/github.com/moby/sys/capability#LastCap
 
 <!-- Minor releases. -->
 [0.1.1]: https://github.com/kolyshkin/capability/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kolyshkin/capability/compare/42c35b4376354fd5...v0.1.0
 
-<!-- PRs in 0.1.x releases. ->
+<!-- PRs in 0.1.x releases. -->
 [#1]: https://github.com/kolyshkin/capability/pull/1
 [#2]: https://github.com/kolyshkin/capability/pull/2
 [#3]: https://github.com/kolyshkin/capability/pull/3

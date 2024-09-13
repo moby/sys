@@ -2,7 +2,7 @@ This is a fork of (apparently no longer maintained)
 https://github.com/syndtr/gocapability package. It provides basic primitives to
 work with [Linux capabilities][capabilities(7)].
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/kolyshkin/capability.svg)](https://pkg.go.dev/github.com/kolyshkin/capability)
+[![Go Reference](https://pkg.go.dev/badge/github.com/moby/sys/capability/capability.svg)](https://pkg.go.dev/github.com/moby/sys/capability)
 
 ## Alternatives
 
