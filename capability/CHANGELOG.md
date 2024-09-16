@@ -5,6 +5,14 @@ from https://github.com/syndtr/gocapability/commit/42c35b4376354fd5.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.0 - 2024-09-16
+
+This is the first release after the move to a new home in
+github.com/moby/sys/capability.
+
+### Fixed
+ * Fixed URLs in documentation to reflect the new home.
+
 ## [0.1.1] - 2024-08-01
 
 This is a maintenance release, fixing a few minor issues.
@@ -42,15 +50,15 @@ This is an initial release since the fork.
  * Removed init function so programs that use this package start faster. [#6]
  * Removed `CAP_LAST_CAP` (use [LastCap] instead). [#6]
 
-<!-- Doc links. TODO: change to new package name. -->
-[Apply]: https://pkg.go.dev/github.com/kolyshkin/capability#Capabilities.Apply
-[LastCap]: https://pkg.go.dev/github.com/kolyshkin/capability#LastCap
+<!-- Doc links. -->
+[Apply]: https://pkg.go.dev/github.com/moby/sys/capability#Capabilities.Apply
+[LastCap]: https://pkg.go.dev/github.com/moby/sys/capability#LastCap
 
 <!-- Minor releases. -->
 [0.1.1]: https://github.com/kolyshkin/capability/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kolyshkin/capability/compare/42c35b4376354fd5...v0.1.0
 
-<!-- PRs in 0.1.x releases. ->
+<!-- PRs in 0.1.x releases. -->
 [#1]: https://github.com/kolyshkin/capability/pull/1
 [#2]: https://github.com/kolyshkin/capability/pull/2
 [#3]: https://github.com/kolyshkin/capability/pull/3
