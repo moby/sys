@@ -20,3 +20,7 @@ func newPid(_ int) (Capabilities, error) {
 func newFile(_ string) (Capabilities, error) {
 	return nil, errNotSup
 }
+
+func lastCap() (Cap, error) {
+	return -1, errNotSup
+}
