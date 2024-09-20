@@ -90,8 +90,7 @@ func (c Cap) String() string {
 	return "unknown"
 }
 
-// List returns list of all supported capabilities
-func List() []Cap {
+func list() []Cap {
 	return []Cap{
 		CAP_CHOWN,
 		CAP_DAC_OVERRIDE,

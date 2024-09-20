@@ -43,8 +43,7 @@ func (g *generator) writeStringFunc() {
 
 func (g *generator) writeListFunc() {
 	g.buf.WriteString("\n")
-	g.buf.WriteString("// List returns list of all supported capabilities\n")
-	g.buf.WriteString("func List() []Cap {\n")
+	g.buf.WriteString("func list() []Cap {\n")
 	g.buf.WriteString("return []Cap{\n")
 	for _, cap := range g.caps {
 		fmt.Fprintf(&g.buf, "%s,\n", cap)
