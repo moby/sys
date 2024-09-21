@@ -134,3 +134,9 @@ func NewFile(path string) (Capabilities, error) {
 func NewFile2(path string) (Capabilities, error) {
 	return newFile(path)
 }
+
+// LastCap returns highest valid capability of the running kernel,
+// or an error if it can not be obtained.
+func LastCap() (Cap, error) {
+	return lastCap()
+}

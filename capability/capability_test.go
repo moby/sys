@@ -4,15 +4,26 @@
 
 package capability
 
-import "testing"
+import (
+	"runtime"
+	"testing"
+)
 
 func TestLastCap(t *testing.T) {
 	last, err := LastCap()
-	if err != nil {
-		t.Fatal(err)
+	switch runtime.GOOS {
+	case "linux":
+		if err != nil {
+			t.Fatal(err)
+		}
+	default:
+		if err == nil {
+			t.Fatal(runtime.GOOS, ": want error, got nil")
+		}
+		return
 	}
 
-	// Sanity checks.
+	// Sanity checks (Linux only).
 	//
 	// Based on the fact Go 1.18+ supports Linux >= 2.6.32, and
 	//   - CAP_MAC_ADMIN (33) was added in 2.6.25;
