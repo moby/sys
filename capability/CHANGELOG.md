@@ -5,7 +5,7 @@ from https://github.com/syndtr/gocapability/commit/42c35b4376354fd5.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.2.0 - 2024-09-16
+## [0.2.0] - 2024-09-16
 
 This is the first release after the move to a new home in
 github.com/moby/sys/capability.
@@ -55,6 +55,7 @@ This is an initial release since the fork.
 [LastCap]: https://pkg.go.dev/github.com/moby/sys/capability#LastCap
 
 <!-- Minor releases. -->
+[0.2.0]: https://github.com/moby/sys/releases/tag/capability%2Fv0.2.0
 [0.1.1]: https://github.com/kolyshkin/capability/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kolyshkin/capability/compare/42c35b4376354fd5...v0.1.0
 
