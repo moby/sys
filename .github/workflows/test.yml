@@ -11,12 +11,20 @@ jobs:
       run:
         shell: bash
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Find go.sum files
+      id: gosum
+      shell: bash
+      run: |
+        echo 'files<<EOF' >> "$GITHUB_OUTPUT"
+        git ls-files '*/go.sum' >> "$GITHUB_OUTPUT"
+        echo 'EOF' >> "$GITHUB_OUTPUT"
     - name: Install Go
       uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
-    - name: Checkout code
-      uses: actions/checkout@v4
+        cache-dependency-path: ${{ steps.gosum.outputs.files }}
     - name: Set PACKAGES env
       if: ${{ matrix.go-version == '1.18.x' }}
       run: |
