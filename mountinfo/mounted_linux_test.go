@@ -15,23 +15,33 @@ import (
 
 // tMount is a wrapper for unix.Mount which is used to prepare test cases.
 // It skips the test case if mounting is not possible (i.e. user is not root),
-// adds more context to mount error, if any, and installs a cleanup handler to
-// undo the mount.
-func tMount(t *testing.T, src, dst, fstype string, flags uintptr, options string) error {
+// fails the test case if there is a mount error, and installs a cleanup
+// handler to undo the mount.
+func tMount(t *testing.T, src, dst, fstype string, flags uintptr) {
+	t.Helper()
 	if os.Getuid() != 0 {
 		t.Skip("root required for mounting")
 	}
 
-	err := unix.Mount(src, dst, fstype, flags, options)
+	err := unix.Mount(src, dst, fstype, flags, "")
 	if err != nil {
-		return &os.PathError{Path: dst, Op: "mount", Err: err}
+		t.Fatal(&os.PathError{Path: dst, Op: "mount", Err: err})
 	}
 	t.Cleanup(func() {
 		if err := unix.Unmount(dst, unix.MNT_DETACH); err != nil {
 			t.Errorf("cleanup: unmount %q failed: %v", dst, err)
 		}
 	})
-	return nil
+}
+
+func tCreateFile(t *testing.T, dir string) string {
+	t.Helper()
+	file, err := os.CreateTemp(dir, "file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+	return file.Name()
 }
 
 type testMount struct {
@@ -39,228 +49,213 @@ type testMount struct {
 	isNotExist bool
 	isMount    bool
 	isBind     bool
-	// prepare returns a path that needs to be checked, and the error, if any.
+	// prepare returns a path that needs to be checked.
+	// If there is an error preparing the path, the test is either skipped or failed.
 	//
 	// It is responsible for cleanup (by using t.Cleanup).
-	//
-	// It should not fail the test (i.e. no calls to t.Error/t.Fatal).
-	// The only exception to this rule is some cases use t.TempDir() for
-	// simplicity (no need to check for errors or call t.Cleanup()), and
-	// it may call t.Fatal, but practically we don't expect it.
-	prepare func(t *testing.T) (string, error)
+	prepare func(t *testing.T) string
 }
 
 var testMounts = []testMount{
 	{
 		desc:       "non-existent path",
 		isNotExist: true,
-		prepare: func(t *testing.T) (string, error) {
-			return "/non/existent/path", nil
+		prepare: func(t *testing.T) string {
+			return "/non/existent/path"
 		},
 	},
 	{
 		desc: "not mounted directory",
-		prepare: func(t *testing.T) (dir string, err error) {
-			dir = t.TempDir()
-			return dir, err
+		prepare: func(t *testing.T) string {
+			return t.TempDir()
 		},
 	},
 	{
 		desc:    "tmpfs mount",
 		isMount: true,
-		prepare: func(t *testing.T) (mnt string, err error) {
-			mnt = t.TempDir()
-			err = tMount(t, "tmpfs", mnt, "tmpfs", 0, "")
-			return mnt, err
+		prepare: func(t *testing.T) string {
+			mnt := t.TempDir()
+			tMount(t, "tmpfs", mnt, "tmpfs", 0)
+			return mnt
 		},
 	},
 	{
 		desc:    "tmpfs mount ending with a slash",
 		isMount: true,
-		prepare: func(t *testing.T) (mnt string, err error) {
-			mnt = t.TempDir() + "/"
-			err = tMount(t, "tmpfs", mnt, "tmpfs", 0, "")
-			return mnt, err
+		prepare: func(t *testing.T) string {
+			mnt := t.TempDir() + "/"
+			tMount(t, "tmpfs", mnt, "tmpfs", 0)
+			return mnt
 		},
 	},
 	{
 		desc:       "broken symlink",
 		isNotExist: true,
-		prepare: func(t *testing.T) (link string, err error) {
-			dir := t.TempDir()
-			link = filepath.Join(dir, "broken-symlink")
-			err = os.Symlink("/some/non/existent/dest", link)
-			return link, err
+		prepare: func(t *testing.T) string {
+			link := filepath.Join(t.TempDir(), "broken-symlink")
+			err := os.Symlink("/some/non/existent/dest", link)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return link
 		},
 	},
 	{
 		desc: "symlink to not mounted directory",
-		prepare: func(t *testing.T) (link string, err error) {
+		prepare: func(t *testing.T) string {
 			tmp := t.TempDir()
 
-			dir, err := os.MkdirTemp(tmp, "dir")
+			t.Helper()
+			dir := filepath.Join(tmp, "dir")
+			err := os.Mkdir(dir, 0o700)
 			if err != nil {
-				return
+				t.Fatal(err)
 			}
 
-			link = filepath.Join(tmp, "symlink")
+			link := filepath.Join(tmp, "symlink")
 			err = os.Symlink(dir, link)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-			return link, err
+			return link
 		},
 	},
 	{
 		desc:    "symlink to mounted directory",
 		isMount: true,
-		prepare: func(t *testing.T) (link string, err error) {
+		prepare: func(t *testing.T) string {
 			tmp := t.TempDir()
 
-			dir, err := os.MkdirTemp(tmp, "dir")
+			t.Helper()
+			dir := filepath.Join(tmp, "dir")
+			err := os.Mkdir(dir, 0o700)
 			if err != nil {
-				return
+				t.Fatal(err)
 			}
 
-			err = tMount(t, "tmpfs", dir, "tmpfs", 0, "")
-			if err != nil {
-				return
-			}
+			tMount(t, "tmpfs", dir, "tmpfs", 0)
 
-			link = filepath.Join(tmp, "symlink")
+			link := filepath.Join(tmp, "symlink")
 			err = os.Symlink(dir, link)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-			return link, err
+			return link
 		},
 	},
 	{
 		desc:    "symlink to a file on a different filesystem",
 		isMount: false,
-		prepare: func(t *testing.T) (link string, err error) {
+		prepare: func(t *testing.T) string {
 			tmp := t.TempDir()
 
-			mnt, err := os.MkdirTemp(tmp, "dir")
+			t.Helper()
+			mnt := filepath.Join(tmp, "dir")
+			err := os.Mkdir(mnt, 0o700)
 			if err != nil {
-				return
+				t.Fatal(err)
 			}
 
-			err = tMount(t, "tmpfs", mnt, "tmpfs", 0, "")
+			tMount(t, "tmpfs", mnt, "tmpfs", 0)
+			file := tCreateFile(t, mnt)
+			link := filepath.Join(tmp, "link")
+			err = os.Symlink(file, link)
 			if err != nil {
-				return
+				t.Fatal(err)
 			}
-			file, err := os.CreateTemp(mnt, "file")
-			if err != nil {
-				return
-			}
-			file.Close()
-			link = filepath.Join(tmp, "link")
-			err = os.Symlink(file.Name(), link)
 
-			return link, err
+			return link
 		},
 	},
 	{
 		desc:    "path whose parent is a symlink to directory on another device",
 		isMount: false,
-		prepare: func(t *testing.T) (path string, err error) {
+		prepare: func(t *testing.T) string {
 			tmp := t.TempDir()
 
-			mnt, err := os.MkdirTemp(tmp, "dir")
+			t.Helper()
+			mnt := filepath.Join(tmp, "dir")
+			err := os.Mkdir(mnt, 0o700)
 			if err != nil {
-				return
+				t.Fatal(err)
 			}
 
-			err = tMount(t, "tmpfs", mnt, "tmpfs", 0, "")
-			if err != nil {
-				return
-			}
-			file, err := os.CreateTemp(mnt, "file")
-			if err != nil {
-				return
-			}
-			file.Close()
-
+			tMount(t, "tmpfs", mnt, "tmpfs", 0)
+			file := tCreateFile(t, mnt)
 			// Create link -> mnt under tmp dir.
 			link := filepath.Join(tmp, "link")
 			err = os.Symlink(filepath.Base(mnt), link)
+			if err != nil {
+				t.Fatal(err)
+			}
 			// Path to check is /<tmp>/link/file.
-			path = filepath.Join(link, filepath.Base(file.Name()))
-
-			return path, err
+			return filepath.Join(link, filepath.Base(file))
 		},
 	},
 	{
 		desc:    "directory bind mounted to itself",
 		isMount: true,
 		isBind:  true,
-		prepare: func(t *testing.T) (mnt string, err error) {
-			mnt = t.TempDir()
-			err = tMount(t, mnt, mnt, "", unix.MS_BIND, "")
-			return mnt, err
+		prepare: func(t *testing.T) string {
+			mnt := t.TempDir()
+			tMount(t, mnt, mnt, "", unix.MS_BIND)
+			return mnt
 		},
 	},
 	{
 		desc:    "directory bind-mounted to other directory",
 		isMount: true,
 		isBind:  true,
-		prepare: func(t *testing.T) (mnt string, err error) {
-			dir := t.TempDir()
-			mnt = t.TempDir()
-			err = tMount(t, dir, mnt, "", unix.MS_BIND, "")
-			return mnt, err
+		prepare: func(t *testing.T) string {
+			mnt := t.TempDir()
+			tMount(t, t.TempDir(), mnt, "", unix.MS_BIND)
+			return mnt
 		},
 	},
 	{
 		desc: "not mounted file",
-		prepare: func(t *testing.T) (path string, err error) {
-			dir := t.TempDir()
-			file, err := os.CreateTemp(dir, "file")
-			if err != nil {
-				return
-			}
-			return file.Name(), err
+		prepare: func(t *testing.T) string {
+			return tCreateFile(t, t.TempDir())
 		},
 	},
 	{
 		desc:    "regular file bind-mounted to itself",
 		isMount: true,
 		isBind:  true,
-		prepare: func(t *testing.T) (path string, err error) {
-			dir := t.TempDir()
-
-			file, err := os.CreateTemp(dir, "file")
-			if err != nil {
-				return
-			}
-			file.Close()
-			path = file.Name()
-
-			err = tMount(t, path, path, "", unix.MS_BIND, "")
-
-			return path, err
+		prepare: func(t *testing.T) string {
+			file := tCreateFile(t, t.TempDir())
+			tMount(t, file, file, "", unix.MS_BIND)
+			return file
 		},
 	},
 	{
 		desc: "not mounted socket",
-		prepare: func(t *testing.T) (path string, err error) {
-			dir := t.TempDir()
-			path = filepath.Join(dir, "sock")
-			_, err = net.Listen("unix", path)
-			return path, err
+		prepare: func(t *testing.T) string {
+			path := filepath.Join(t.TempDir(), "sock")
+			_, err := net.Listen("unix", path)
+			if err != nil {
+				t.Helper()
+				t.Fatal(err)
+			}
+			return path
 		},
 	},
 	{
 		desc:    "socket bind-mounted to itself",
 		isMount: true,
 		isBind:  true,
-		prepare: func(t *testing.T) (path string, err error) {
-			dir := t.TempDir()
-			path = filepath.Join(dir, "sock")
-			_, err = net.Listen("unix", path)
+		prepare: func(t *testing.T) string {
+			path := filepath.Join(t.TempDir(), "sock")
+			_, err := net.Listen("unix", path)
 			if err != nil {
-				return
+				t.Helper()
+				t.Fatal(err)
 			}
-			err = tMount(t, path, path, "", unix.MS_BIND, "")
+			tMount(t, path, path, "", unix.MS_BIND)
 
-			return path, err
+			return path
 		},
 	},
 }
@@ -345,10 +340,7 @@ func TestMountedBy(t *testing.T) {
 	for _, tc := range testMounts {
 		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
-			m, err := tc.prepare(t)
-			if err != nil {
-				t.Fatalf("prepare: %v", err)
-			}
+			m := tc.prepare(t)
 
 			// Check the public Mounted() function as a whole.
 			mounted, err := Mounted(m)
