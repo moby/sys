@@ -307,15 +307,15 @@ func (c *capsV3) Load() (err error) {
 			}
 			break
 		}
-		if strings.HasPrefix(line, "CapB") {
-			_, err = fmt.Sscanf(line[4:], "nd:  %08x%08x", &c.bounds[1], &c.bounds[0])
+		if val, ok := strings.CutPrefix(line, "CapBnd:\t"); ok {
+			_, err = fmt.Sscanf(val, "%08x%08x", &c.bounds[1], &c.bounds[0])
 			if err != nil {
 				break
 			}
 			continue
 		}
-		if strings.HasPrefix(line, "CapA") {
-			_, err = fmt.Sscanf(line[4:], "mb:  %08x%08x", &c.ambient[1], &c.ambient[0])
+		if val, ok := strings.CutPrefix(line, "CapAmb:\t"); ok {
+			_, err = fmt.Sscanf(val, "%08x%08x", &c.ambient[1], &c.ambient[0])
 			if err != nil {
 				break
 			}
