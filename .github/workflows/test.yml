@@ -45,3 +45,9 @@ jobs:
         uname -a
         make test
 
+  codespell:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    - run: pip install --break-system-packages codespell==v2.3.0
+    - run: codespell
