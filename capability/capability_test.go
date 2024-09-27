@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package capability
+package capability_test
 
 import (
 	"runtime"
 	"testing"
+
+	. "github.com/moby/sys/capability"
 )
 
 // Based on the fact Go 1.18+ supports Linux >= 2.6.32, and
@@ -24,47 +26,43 @@ const (
 func TestLastCap(t *testing.T) {
 	last, err := LastCap()
 	switch runtime.GOOS {
-	case "linux":
-		if err != nil {
-			t.Fatal(err)
-		}
 	default:
 		if err == nil {
 			t.Fatal(runtime.GOOS, ": want error, got nil")
 		}
 		return
+	case "linux":
 	}
-
-	// Sanity checks (Linux only).
+	if err != nil {
+		t.Fatalf("LastCap: want nil, got error: %v", err)
+	}
+	// Sanity checks.
 	if last < minLastCap {
-		t.Fatalf("LastCap returned %d (%s), expected >= %d (%s)",
+		t.Errorf("LastCap: want >= %d (%s), got %d (%s)",
 			last, last, minLastCap, minLastCap)
 	}
 	if last > maxLastCap {
-		t.Fatalf("LastCap returned %d, expected <= %d (%s). Package needs to be updated.",
-			last, maxLastCap, maxLastCap)
+		t.Errorf("LastCap: want <= %d (%s), got %d (%s). Package needs to be updated.",
+			last, last, maxLastCap, maxLastCap)
 	}
 }
 
 func TestListSupported(t *testing.T) {
 	list, err := ListSupported()
 	switch runtime.GOOS {
-	case "linux":
-		if err != nil {
-			t.Fatal(err)
-		}
 	default:
 		if err == nil {
 			t.Fatal(runtime.GOOS, ": want error, got nil")
 		}
-	}
-	if runtime.GOOS != "linux" {
 		return
+	case "linux":
 	}
-	// Sanity check (Linux only).
+	if err != nil {
+		t.Fatalf("ListSupported: want nil, got error: %v", err)
+	}
 	t.Logf("got +%v (len %d)", list, len(list))
 	minLen := int(minLastCap) + 1
 	if len(list) < minLen {
-		t.Fatalf("result is too short (got %d, want %d): +%v", len(list), minLen, list)
+		t.Errorf("ListSupported: too short (want %d, got %d): +%v", minLen, len(list), list)
 	}
 }
