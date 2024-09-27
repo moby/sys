@@ -364,12 +364,16 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 	}
 
 	if kind&AMBS == AMBS {
+		err = prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0)
+		if err != nil && err != syscall.EINVAL { //nolint:errorlint // Errors from syscall are bare.
+			// Ignore EINVAL as not supported on kernels before 4.3
+			return
+		}
 		for i := Cap(0); i <= last; i++ {
-			action := pr_CAP_AMBIENT_LOWER
-			if c.Get(AMBIENT, i) {
-				action = pr_CAP_AMBIENT_RAISE
+			if !c.Get(AMBIENT, i) {
+				continue
 			}
-			err = prctl(pr_CAP_AMBIENT, action, uintptr(i), 0, 0)
+			err = prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_RAISE, uintptr(i), 0, 0)
 			if err != nil {
 				// Ignore EINVAL as not supported on kernels before 4.3
 				if err == syscall.EINVAL { //nolint:errorlint // Errors from syscall are bare.
