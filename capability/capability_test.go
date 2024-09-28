@@ -21,6 +21,16 @@ const (
 	maxLastCap = CAP_CHECKPOINT_RESTORE
 )
 
+func requirePCapSet(t *testing.T) {
+	pid, err := NewPid(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !pid.Get(EFFECTIVE, CAP_SETPCAP) {
+		t.Skip("The test needs `CAP_SETPCAP`.")
+	}
+}
+
 func TestLastCap(t *testing.T) {
 	last, err := LastCap()
 	switch runtime.GOOS {
@@ -66,5 +76,58 @@ func TestListSupported(t *testing.T) {
 	minLen := int(minLastCap) + 1
 	if len(list) < minLen {
 		t.Fatalf("result is too short (got %d, want %d): +%v", len(list), minLen, list)
+	}
+}
+
+func TestAmbientCapSet(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		return
+	}
+	requirePCapSet(t)
+
+	capBounding := []Cap{CAP_KILL, CAP_CHOWN, CAP_SYSLOG}
+	capPermitted := []Cap{CAP_KILL, CAP_CHOWN}
+	capEffective := []Cap{CAP_KILL}
+	capInheritable := []Cap{CAP_KILL, CAP_CHOWN}
+	capAmbient := []Cap{CAP_KILL, CAP_CHOWN}
+
+	pid, err := newPid(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid.Set(BOUNDING, capBounding...)
+	pid.Set(PERMITTED, capPermitted...)
+	pid.Set(EFFECTIVE, capEffective...)
+	pid.Set(INHERITABLE, capInheritable...)
+	pid.Set(AMBIENT, capAmbient...)
+	if err = pid.Apply(CAPS | BOUNDING | AMBIENT); err != nil {
+		t.Fatal(err)
+	}
+
+	// Restore the cap set data from current process
+	if err = pid.Load(); err != nil {
+		t.Fatal(err)
+	}
+	for _, cap := range capAmbient {
+		if !pid.Get(AMBIENT, cap) {
+			t.Fatalf("expected ambient cap(%d) to be set but it's not", cap)
+		}
+	}
+
+	// Remove a ambient cap, to check `PR_CAP_AMBIENT_CLEAR_ALL` work.
+	pid.Clear(AMBIENT)
+	pid.Set(AMBIENT, capAmbient[0])
+	if err = pid.Apply(CAPS | BOUNDING | AMBIENT); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = pid.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if !pid.Get(AMBIENT, capAmbient[0]) {
+		t.Fatalf("expected ambient cap(%d) to be set but it's not", capAmbient[0])
+	}
+	if pid.Get(AMBIENT, capAmbient[1]) {
+		t.Fatalf("expected ambient cap(%d) not to be set but it has been set", capAmbient[1])
 	}
 }
