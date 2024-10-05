@@ -367,13 +367,17 @@ func (c *capsV3) Apply(kind CapType) error {
 	}
 
 	if kind&AMBS == AMBS {
+		// Ignore EINVAL as not supported on kernels before 4.3
+		err = ignoreEINVAL(ambientClearAll())
+		if err != nil {
+			return err
+		}
 		for i := Cap(0); i <= last; i++ {
-			action := pr_CAP_AMBIENT_LOWER
-			if c.Get(AMBIENT, i) {
-				action = pr_CAP_AMBIENT_RAISE
+			if !c.Get(AMBIENT, i) {
+				continue
 			}
 			// Ignore EINVAL as not supported on kernels before 4.3
-			err = ignoreEINVAL(prctl(pr_CAP_AMBIENT, action, uintptr(i), 0, 0))
+			err = ignoreEINVAL(ambientRaise(i))
 			if err != nil {
 				return err
 			}
@@ -381,6 +385,32 @@ func (c *capsV3) Apply(kind CapType) error {
 	}
 
 	return nil
+}
+
+func setAmbient(raise bool, cap ...Cap) error {
+	action := pr_CAP_AMBIENT_LOWER
+	if raise {
+		action = pr_CAP_AMBIENT_RAISE
+	}
+	for _, val := range cap {
+		err := prctl(pr_CAP_AMBIENT, action, uintptr(val), 0, 0)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ambientRaise(cap ...Cap) error {
+	return setAmbient(true, cap...)
+}
+
+func ambientLower(cap ...Cap) error {
+	return setAmbient(false, cap...)
+}
+
+func ambientClearAll() error {
+	return prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0)
 }
 
 func newFile(path string) (c Capabilities, err error) {

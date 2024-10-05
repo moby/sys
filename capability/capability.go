@@ -142,3 +142,18 @@ func NewFile2(path string) (Capabilities, error) {
 func LastCap() (Cap, error) {
 	return lastCap()
 }
+
+// AmbientRaise is to raise caps for our own process
+func AmbientRaise(cap ...Cap) error {
+	return ambientRaise(cap...)
+}
+
+// AmbientRaise is to lower caps for our own process
+func AmbientLower(cap ...Cap) error {
+	return ambientLower(cap...)
+}
+
+// AmbientRaise is to lower all caps for our own process
+func AmbientClearAll() error {
+	return ambientClearAll()
+}
