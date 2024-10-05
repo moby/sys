@@ -142,3 +142,18 @@ func NewFile2(path string) (Capabilities, error) {
 func LastCap() (Cap, error) {
 	return lastCap()
 }
+
+// AmbientRaise raises specified ambient capabilities for the calling process.
+func AmbientRaise(cap ...Cap) error {
+	return ambientRaise(cap...)
+}
+
+// AmbientLower lowers specified ambient capabilities for the calling process.
+func AmbientLower(cap ...Cap) error {
+	return ambientLower(cap...)
+}
+
+// AmbientClearAll lowers all ambient capabilities for the calling process.
+func AmbientClearAll() error {
+	return ambientClearAll()
+}
