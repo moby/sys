@@ -117,6 +117,13 @@ func newPid(pid int) (c Capabilities, retErr error) {
 	return
 }
 
+func ignoreEINVAL(err error) error {
+	if errors.Is(err, syscall.EINVAL) {
+		err = nil
+	}
+	return err
+}
+
 type capsV3 struct {
 	hdr     capHeader
 	data    [2]capData
@@ -327,7 +334,7 @@ func (c *capsV3) Load() (err error) {
 	return
 }
 
-func (c *capsV3) Apply(kind CapType) (err error) {
+func (c *capsV3) Apply(kind CapType) error {
 	last, err := LastCap()
 	if err != nil {
 		return err
@@ -336,21 +343,17 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 		var data [2]capData
 		err = capget(&c.hdr, &data[0])
 		if err != nil {
-			return
+			return err
 		}
 		if (1<<uint(CAP_SETPCAP))&data[0].effective != 0 {
 			for i := Cap(0); i <= last; i++ {
 				if c.Get(BOUNDING, i) {
 					continue
 				}
-				err = prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0, 0, 0)
+				// Ignore EINVAL since the capability may not be supported in this system.
+				err = ignoreEINVAL(prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0, 0, 0))
 				if err != nil {
-					// Ignore EINVAL since the capability may not be supported in this system.
-					if err == syscall.EINVAL { //nolint:errorlint // Errors from syscall are bare.
-						err = nil
-						continue
-					}
-					return
+					return err
 				}
 			}
 		}
@@ -359,33 +362,29 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 	if kind&CAPS == CAPS {
 		err = capset(&c.hdr, &c.data[0])
 		if err != nil {
-			return
+			return err
 		}
 	}
 
 	if kind&AMBS == AMBS {
-		err = prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0)
-		if err != nil && err != syscall.EINVAL { //nolint:errorlint // Errors from syscall are bare.
-			// Ignore EINVAL as not supported on kernels before 4.3
-			return
+		// Ignore EINVAL as not supported on kernels before 4.3
+		err = ignoreEINVAL(prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0))
+		if err != nil {
+			return err
 		}
 		for i := Cap(0); i <= last; i++ {
 			if !c.Get(AMBIENT, i) {
 				continue
 			}
-			err = prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_RAISE, uintptr(i), 0, 0)
+			// Ignore EINVAL as not supported on kernels before 4.3
+			err = ignoreEINVAL(prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_RAISE, uintptr(i), 0, 0))
 			if err != nil {
-				// Ignore EINVAL as not supported on kernels before 4.3
-				if err == syscall.EINVAL { //nolint:errorlint // Errors from syscall are bare.
-					err = nil
-					continue
-				}
-				return
+				return err
 			}
 		}
 	}
 
-	return
+	return nil
 }
 
 func newFile(path string) (c Capabilities, err error) {
