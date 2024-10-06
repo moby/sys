@@ -343,13 +343,9 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 				if c.Get(BOUNDING, i) {
 					continue
 				}
-				err = prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0, 0, 0)
+				// Ignore EINVAL since the capability may not be supported in this system.
+				err = ignoreEINVAL(prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0, 0, 0))
 				if err != nil {
-					// Ignore EINVAL since the capability may not be supported in this system.
-					if err == syscall.EINVAL { //nolint:errorlint // Errors from syscall are bare.
-						err = nil
-						continue
-					}
 					return
 				}
 			}
@@ -369,13 +365,9 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 			if c.Get(AMBIENT, i) {
 				action = pr_CAP_AMBIENT_RAISE
 			}
-			err = prctl(pr_CAP_AMBIENT, action, uintptr(i), 0, 0)
+			// Ignore EINVAL as not supported on kernels before 4.3.
+			err = ignoreEINVAL(prctl(pr_CAP_AMBIENT, action, uintptr(i), 0, 0))
 			if err != nil {
-				// Ignore EINVAL as not supported on kernels before 4.3
-				if err == syscall.EINVAL { //nolint:errorlint // Errors from syscall are bare.
-					err = nil
-					continue
-				}
 				return
 			}
 		}
@@ -538,4 +530,11 @@ func (c *capsFile) Apply(kind CapType) (err error) {
 		return setVfsCap(c.path, &c.data)
 	}
 	return
+}
+
+func ignoreEINVAL(err error) error {
+	if errors.Is(err, syscall.EINVAL) {
+		err = nil
+	}
+	return err
 }
