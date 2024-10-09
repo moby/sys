@@ -340,6 +340,9 @@ func (c *capsV3) Apply(kind CapType) error {
 		return err
 	}
 	if kind&BOUNDS == BOUNDS {
+		if c.hdr.pid != 0 {
+			return errors.New("not support to drop bounding caps for other process")
+		}
 		var data [2]capData
 		err = capget(&c.hdr, &data[0])
 		if err != nil {
@@ -367,6 +370,9 @@ func (c *capsV3) Apply(kind CapType) error {
 	}
 
 	if kind&AMBS == AMBS {
+		if c.hdr.pid != 0 {
+			return errors.New("not support to raise ambient cap for other process")
+		}
 		// Ignore EINVAL as not supported on kernels before 4.3
 		err = ignoreEINVAL(ambientClearAll())
 		if err != nil {
