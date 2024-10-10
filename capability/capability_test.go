@@ -23,7 +23,8 @@ const (
 	maxLastCap = CAP_CHECKPOINT_RESTORE
 )
 
-func requirePCapSet(t *testing.T) {
+func requirePCapSet(t testing.TB) {
+	t.Helper()
 	pid, err := NewPid2(0)
 	if err != nil {
 		t.Fatal(err)
