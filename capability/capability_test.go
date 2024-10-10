@@ -112,49 +112,42 @@ func TestAmbientCapSet(t *testing.T) {
 	}
 	requirePCapSet(t)
 
-	capBounding := []Cap{CAP_KILL, CAP_CHOWN, CAP_SYSLOG}
-	capPermitted := []Cap{CAP_KILL, CAP_CHOWN}
-	capEffective := []Cap{CAP_KILL}
-	capInheritable := []Cap{CAP_KILL, CAP_CHOWN}
-	capAmbient := []Cap{CAP_KILL, CAP_CHOWN}
-
 	pid, err := NewPid2(0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pid.Set(BOUNDING, capBounding...)
-	pid.Set(PERMITTED, capPermitted...)
-	pid.Set(EFFECTIVE, capEffective...)
-	pid.Set(INHERITABLE, capInheritable...)
-	pid.Set(AMBIENT, capAmbient...)
-	if err = pid.Apply(CAPS | BOUNDING | AMBIENT); err != nil {
+
+	list := []Cap{CAP_KILL, CAP_CHOWN, CAP_SYS_CHROOT}
+	pid.Set(CAPS|AMBIENT, list...)
+	if err = pid.Apply(CAPS | AMBIENT); err != nil {
 		t.Fatal(err)
 	}
 
-	// Restore the cap set data from current process
+	// Check if ambient caps were applied.
 	if err = pid.Load(); err != nil {
 		t.Fatal(err)
 	}
-	for _, cap := range capAmbient {
-		if !pid.Get(AMBIENT, cap) {
-			t.Fatalf("expected ambient cap(%d) to be set but it's not", cap)
+	for _, cap := range list {
+		want := true
+		if got := pid.Get(AMBIENT, cap); want != got {
+			t.Errorf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
 		}
 	}
 
-	// Remove a ambient cap, to check `PR_CAP_AMBIENT_CLEAR_ALL` work.
-	pid.Clear(AMBIENT)
-	pid.Set(AMBIENT, capAmbient[0])
-	if err = pid.Apply(CAPS | BOUNDING | AMBIENT); err != nil {
+	// Unset a single ambient cap, to check `PR_CAP_AMBIENT_CLEAR_ALL` work.
+	const unsetIdx = 1
+	pid.Unset(AMBIENT, list[unsetIdx])
+	if err = pid.Apply(AMBIENT); err != nil {
 		t.Fatal(err)
 	}
 
 	if err = pid.Load(); err != nil {
 		t.Fatal(err)
 	}
-	if !pid.Get(AMBIENT, capAmbient[0]) {
-		t.Fatalf("expected ambient cap(%d) to be set but it's not", capAmbient[0])
-	}
-	if pid.Get(AMBIENT, capAmbient[1]) {
-		t.Fatalf("expected ambient cap(%d) not to be set but it has been set", capAmbient[1])
+	for i, cap := range list {
+		want := i != unsetIdx
+		if got := pid.Get(AMBIENT, cap); want != got {
+			t.Errorf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
 	}
 }
