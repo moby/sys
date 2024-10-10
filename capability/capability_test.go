@@ -24,8 +24,11 @@ const (
 )
 
 func requirePCapSet(t *testing.T) {
-	pid, err := NewPid(0)
+	pid, err := NewPid2(0)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pid.Load(); err != nil {
 		t.Fatal(err)
 	}
 	if !pid.Get(EFFECTIVE, CAP_SETPCAP) {
@@ -114,7 +117,7 @@ func TestAmbientCapSet(t *testing.T) {
 	capInheritable := []Cap{CAP_KILL, CAP_CHOWN}
 	capAmbient := []Cap{CAP_KILL, CAP_CHOWN}
 
-	pid, err := newPid(0)
+	pid, err := NewPid2(0)
 	if err != nil {
 		t.Fatal(err)
 	}
