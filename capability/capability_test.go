@@ -23,6 +23,16 @@ const (
 	maxLastCap = CAP_CHECKPOINT_RESTORE
 )
 
+func requirePCapSet(t *testing.T) {
+	pid, err := NewPid(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !pid.Get(EFFECTIVE, CAP_SETPCAP) {
+		t.Skip("The test needs `CAP_SETPCAP`.")
+	}
+}
+
 func TestLastCap(t *testing.T) {
 	last, err := LastCap()
 	switch runtime.GOOS {
@@ -89,5 +99,96 @@ func TestNewPid2Load(t *testing.T) {
 	t.Logf("Bounding set: %s", bset)
 	if len(bset) == 0 {
 		t.Fatal("loaded bounding set: want non-empty, got empty")
+	}
+}
+
+func TestAmbientCapSet(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		return
+	}
+	requirePCapSet(t)
+
+	capBounding := []Cap{CAP_KILL, CAP_CHOWN, CAP_SYSLOG}
+	capPermitted := []Cap{CAP_KILL, CAP_CHOWN}
+	capEffective := []Cap{CAP_KILL}
+	capInheritable := []Cap{CAP_KILL, CAP_CHOWN}
+	capAmbient := []Cap{CAP_KILL, CAP_CHOWN}
+
+	pid, err := NewPid(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid.Set(BOUNDING, capBounding...)
+	pid.Set(PERMITTED, capPermitted...)
+	pid.Set(EFFECTIVE, capEffective...)
+	pid.Set(INHERITABLE, capInheritable...)
+	pid.Set(AMBIENT, capAmbient...)
+	if err = pid.Apply(CAPS | BOUNDING | AMBIENT); err != nil {
+		t.Fatal(err)
+	}
+
+	// Restore the cap set data from current process
+	if err = pid.Load(); err != nil {
+		t.Fatal(err)
+	}
+	for _, cap := range capAmbient {
+		if !pid.Get(AMBIENT, cap) {
+			t.Fatalf("expected ambient cap(%d) to be set but it's not", cap)
+		}
+	}
+
+	// Remove a ambient cap, to check `PR_CAP_AMBIENT_CLEAR_ALL` work.
+	pid.Clear(AMBIENT)
+	pid.Set(AMBIENT, capAmbient[0])
+	if err = pid.Apply(CAPS | BOUNDING | AMBIENT); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = pid.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if !pid.Get(AMBIENT, capAmbient[0]) {
+		t.Fatalf("expected ambient cap(%d) to be set but it's not", capAmbient[0])
+	}
+	if pid.Get(AMBIENT, capAmbient[1]) {
+		t.Fatalf("expected ambient cap(%d) not to be set but it has been set", capAmbient[1])
+	}
+}
+
+func TestAmbientCapSetForOtherProcess(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		return
+	}
+	requirePCapSet(t)
+
+	pid, err := NewPid(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = pid.Apply(AMBIENT)
+	if err == nil {
+		t.Fatal("expected error when rasing ambient caps for other process, but got nil")
+	}
+	if err.Error() != "not support to raise ambient cap for other process" {
+		t.Fatalf("expected not support error when rasing ambient caps for other process, but got: %v", err)
+	}
+}
+
+func TestDropBoundingCapSetForOtherProcess(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		return
+	}
+	requirePCapSet(t)
+
+	pid, err := NewPid(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = pid.Apply(BOUNDING)
+	if err == nil {
+		t.Fatal("expected error when drop bounding caps for other process, but got nil")
+	}
+	if err.Error() != "not support to drop bounding caps for other process" {
+		t.Fatalf("expected not support error when drop bounding caps for other process, but got: %v", err)
 	}
 }
