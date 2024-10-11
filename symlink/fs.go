@@ -110,15 +110,15 @@ func evalSymlinksInScope(path, root string) (string, error) {
 		// into "/b/../c" which then gets filepath.Cleaned into "/c" and then
 		// root gets prepended and we Clean again (to remove any trailing slash
 		// if the first Clean gave us just "/")
-		cleanP := filepath.Clean(string(filepath.Separator) + b.String() + p)
-		if isDriveOrRoot(cleanP) {
+		pClean := filepath.Clean(string(filepath.Separator) + b.String() + p)
+		if isDriveOrRoot(pClean) {
 			// never Lstat "/" itself, or drive letters on Windows
 			b.Reset()
 			continue
 		}
-		fullP := filepath.Clean(root + cleanP)
+		pFull := filepath.Clean(root + pClean)
 
-		fi, err := os.Lstat(fullP)
+		fi, err := os.Lstat(pFull)
 		if os.IsNotExist(err) {
 			// if p does not exist, accept it
 			b.WriteString(p)
@@ -135,7 +135,7 @@ func evalSymlinksInScope(path, root string) (string, error) {
 		}
 
 		// it's a symlink, put it at the front of path
-		dest, err := os.Readlink(fullP)
+		dest, err := os.Readlink(pFull)
 		if err != nil {
 			return "", err
 		}
