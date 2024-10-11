@@ -8,6 +8,8 @@
 // Package capability provides utilities for manipulating POSIX capabilities.
 package capability
 
+import "errors"
+
 type Capabilities interface {
 	// Get check whether a capability present in the given
 	// capabilities set. The 'which' value should be one of EFFECTIVE,
@@ -60,6 +62,11 @@ type Capabilities interface {
 	// effect.
 	Apply(kind CapType) error
 }
+
+var (
+	errBoundingNotMine = errors.New("not support drop bounding cap of other process")
+	errAmbientNotMine  = errors.New("not support modify ambient cap of other process")
+)
 
 // NewPid initializes a new [Capabilities] object for given pid when
 // it is nonzero, or for the current process if pid is 0.

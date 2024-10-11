@@ -334,6 +334,9 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 	}
 	if kind&BOUNDS == BOUNDS {
 		var data [2]capData
+		if c.hdr.pid != 0 {
+			return errBoundingNotMine
+		}
 		err = capget(&c.hdr, &data[0])
 		if err != nil {
 			return
@@ -364,6 +367,9 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 	}
 
 	if kind&AMBS == AMBS {
+		if c.hdr.pid != 0 {
+			return errAmbientNotMine
+		}
 		err = prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0)
 		if err != nil && err != syscall.EINVAL { //nolint:errorlint // Errors from syscall are bare.
 			// Ignore EINVAL as not supported on kernels before 4.3
