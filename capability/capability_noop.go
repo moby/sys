@@ -24,3 +24,15 @@ func newFile(_ string) (Capabilities, error) {
 func lastCap() (Cap, error) {
 	return -1, errNotSup
 }
+
+func ambientRaise(cap ...Cap) error {
+	return errNotSup
+}
+
+func ambientLower(cap ...Cap) error {
+	return errNotSup
+}
+
+func ambientClearAll() error {
+	return errNotSup
+}

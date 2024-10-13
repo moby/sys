@@ -106,7 +106,7 @@ func TestNewPid2Load(t *testing.T) {
 	}
 }
 
-func TestAmbientCapSet(t *testing.T) {
+func TestApplyCaps(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		return
 	}
@@ -148,6 +148,66 @@ func TestAmbientCapSet(t *testing.T) {
 		want := i != unsetIdx
 		if got := pid.Get(AMBIENT, cap); want != got {
 			t.Errorf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+}
+
+func TestModifyAmbientCaps(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		return
+	}
+	requirePCapSet(t)
+
+	pid, err := NewPid2(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list := []Cap{CAP_KILL, CAP_CHOWN, CAP_SYS_CHROOT}
+	pid.Set(CAPS|AMBIENT, list...)
+	if err = pid.Apply(CAPS); err != nil {
+		t.Fatal(err)
+	}
+	if err = AmbientRaise(list...); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check if ambient caps were raised.
+	if err = pid.Load(); err != nil {
+		t.Fatal(err)
+	}
+	for _, cap := range list {
+		want := true
+		if got := pid.Get(AMBIENT, cap); want != got {
+			t.Errorf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+
+	// Lower one ambient cap.
+	const unsetIdx = 1
+	if err = AmbientLower(list[unsetIdx]); err != nil {
+		t.Fatal(err)
+	}
+	if err = pid.Load(); err != nil {
+		t.Fatal(err)
+	}
+	for i, cap := range list {
+		want := i != unsetIdx
+		if got := pid.Get(AMBIENT, cap); want != got {
+			t.Errorf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+
+	// Lower all ambient caps
+	if err = AmbientClearAll(); err != nil {
+		t.Fatal(err)
+	}
+	if err = pid.Load(); err != nil {
+		t.Fatal(err)
+	}
+	for _, cap := range list {
+		if got := pid.Get(AMBIENT, cap); got {
+			t.Errorf("Get(AMBIENT, %s): want false, got %v", cap, got)
 		}
 	}
 }
