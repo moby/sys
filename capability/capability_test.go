@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package capability_test
+package capability
 
 import (
+	"errors"
+	"os/exec"
 	"runtime"
 	"testing"
-
-	. "github.com/moby/sys/capability"
 )
 
 // Based on the fact Go 1.18+ supports Linux >= 2.6.32, and
@@ -149,5 +149,42 @@ func TestAmbientCapSet(t *testing.T) {
 		if got := pid.Get(AMBIENT, cap); want != got {
 			t.Errorf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
 		}
+	}
+}
+
+func TestApplyCapsForOtherProcess(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		return
+	}
+	requirePCapSet(t)
+
+	cmd := exec.Command("sleep", "sleep", "infinity")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+		_, _ = cmd.Process.Wait()
+	}()
+
+	pid, err := NewPid(cmd.Process.Pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = pid.Load(); err != nil {
+		t.Fatal(err)
+	}
+	err = pid.Apply(BOUNDING)
+	if !errors.Is(err, errBoundingNotMine) {
+		t.Fatalf("expected not support error when drop bounding caps for other process, but got: %v", err)
+	}
+	err = pid.Apply(CAPS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = pid.Apply(AMBIENT)
+	if !errors.Is(err, errAmbientNotMine) {
+		t.Fatalf("expected not support error when rasing ambient caps for other process, but got: %v", err)
 	}
 }
