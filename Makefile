@@ -14,7 +14,7 @@ clean:
 
 .PHONY: foreach
 foreach: ## Run $(CMD) for every package.
-	@if test -z "$(CMD)"; then \
+	@if test -z '$(CMD)'; then \
 		echo 'Usage: make foreach CMD="commands to run for every package"'; \
 		exit 1; \
 	fi
