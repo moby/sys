@@ -56,8 +56,8 @@ type Capabilities interface {
 	// outstanding changes.
 	Load() error
 
-	// Apply apply the capabilities settings, so all changes will take
-	// effect.
+	// Apply apply the capabilities settings, so all changes made by
+	// [Set], [Unset], [Fill], or [Clear] will take effect.
 	Apply(kind CapType) error
 }
 
