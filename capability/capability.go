@@ -64,8 +64,8 @@ type Capabilities interface {
 // NewPid initializes a new [Capabilities] object for given pid when
 // it is nonzero, or for the current process if pid is 0.
 //
-// Deprecated: Replace with [NewPid2] followed by [Capabilities.Load].
-// For example, replace:
+// Deprecated: replace with [NewPid2] followed by optional [Capabilities.Load]
+// (only if needed). For example, replace:
 //
 //	c, err := NewPid(0)
 //	if err != nil {
@@ -93,16 +93,16 @@ func NewPid(pid int) (Capabilities, error) {
 
 // NewPid2 initializes a new [Capabilities] object for given pid when
 // it is nonzero, or for the current process if pid is 0. This
-// does not load the process's current capabilities; to do that you
-// must call [Capabilities.Load] explicitly.
+// does not load the process's current capabilities; if needed,
+// call [Capabilities.Load].
 func NewPid2(pid int) (Capabilities, error) {
 	return newPid(pid)
 }
 
 // NewFile initializes a new Capabilities object for given file path.
 //
-// Deprecated: Replace with [NewFile2] followed by [Capabilities.Load].
-// For example, replace:
+// Deprecated: replace with [NewFile2] followed by optional [Capabilities.Load]
+// (only if needed). For example, replace:
 //
 //	c, err := NewFile(path)
 //	if err != nil {
@@ -130,7 +130,7 @@ func NewFile(path string) (Capabilities, error) {
 
 // NewFile2 creates a new initialized [Capabilities] object for given
 // file path. This does not load the process's current capabilities;
-// to do that you must call [Capabilities.Load] explicitly.
+// if needed, call [Capabilities.Load].
 func NewFile2(path string) (Capabilities, error) {
 	return newFile(path)
 }
