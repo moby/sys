@@ -354,7 +354,7 @@ func (c *capsV3) Apply(kind CapType) error {
 					continue
 				}
 				// Ignore EINVAL since the capability may not be supported in this system.
-				err = ignoreEINVAL(prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0, 0, 0))
+				err = ignoreEINVAL(prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0))
 				if err != nil {
 					return err
 				}
@@ -371,7 +371,7 @@ func (c *capsV3) Apply(kind CapType) error {
 
 	if kind&AMBS == AMBS {
 		// Ignore EINVAL as not supported on kernels before 4.3
-		err = ignoreEINVAL(prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0))
+		err = ignoreEINVAL(prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0))
 		if err != nil {
 			return err
 		}
@@ -380,7 +380,7 @@ func (c *capsV3) Apply(kind CapType) error {
 				continue
 			}
 			// Ignore EINVAL as not supported on kernels before 4.3
-			err = ignoreEINVAL(prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_RAISE, uintptr(i), 0, 0))
+			err = ignoreEINVAL(prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_RAISE, uintptr(i)))
 			if err != nil {
 				return err
 			}

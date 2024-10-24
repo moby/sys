@@ -48,8 +48,8 @@ const (
 	pr_CAP_AMBIENT_CLEAR_ALL = uintptr(4)
 )
 
-func prctl(option int, arg2, arg3, arg4, arg5 uintptr) (err error) {
-	_, _, e1 := syscall.Syscall6(syscall.SYS_PRCTL, uintptr(option), arg2, arg3, arg4, arg5, 0)
+func prctl(option int, arg2, arg3 uintptr) (err error) {
+	_, _, e1 := syscall.Syscall(syscall.SYS_PRCTL, uintptr(option), arg2, arg3)
 	if e1 != 0 {
 		err = e1
 	}
