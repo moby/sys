@@ -328,6 +328,9 @@ func (c *capsV3) Load() (err error) {
 }
 
 func (c *capsV3) Apply(kind CapType) (err error) {
+	if c.hdr.pid != 0 {
+		return errors.New("unable to modify capabilities of another process")
+	}
 	last, err := LastCap()
 	if err != nil {
 		return err

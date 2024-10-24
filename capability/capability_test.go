@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"testing"
 
 	. "github.com/moby/sys/capability"
@@ -192,4 +193,37 @@ func childAmbientCapSet() {
 		}
 	}
 	os.Exit(0)
+}
+
+// https://github.com/moby/sys/issues/168
+func TestApplyOtherProcess(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		return
+	}
+	requirePCapSet(t)
+
+	cmd := exec.Command("sleep", "infinity")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_, _ = cmd.Process.Wait()
+	})
+
+	pid, err := NewPid2(cmd.Process.Pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid.Clear(CAPS | BOUNDS | AMBS)
+
+	// See (*capsV3).Apply.
+	expErr := "unable to modify capabilities of another process"
+
+	for _, arg := range []CapType{CAPS, BOUNDS, AMBS} {
+		err = pid.Apply(arg)
+		if !strings.Contains(err.Error(), expErr) {
+			t.Errorf("Apply(%q): want error to contain %q; got %v", arg, expErr, err)
+		}
+	}
 }
