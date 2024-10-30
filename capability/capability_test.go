@@ -42,7 +42,7 @@ func requirePCapSet(t testing.TB) {
 }
 
 // testInChild runs fn as a separate process, and returns its output.
-// This is useful for tests which manipulate capabilties, allowing to
+// This is useful for tests which manipulate capabilities, allowing to
 // preserve those of the main test process.
 //
 // The fn is a function which must end with os.Exit. In case exit code
