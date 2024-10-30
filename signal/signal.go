@@ -12,14 +12,12 @@ import (
 )
 
 // CatchAll catches all signals and relays them to the specified channel.
-// SIGURG is not handled, as it's used by the Go runtime to support
-// preemptable system calls.
+// SIGURG is ignored, as it is used by the Go runtime for internal purposes
+// (see https://github.com/golang/go/issues/24543).
 func CatchAll(sigc chan os.Signal) {
 	var handledSigs []os.Signal
 	for n, s := range SignalMap {
 		if n == "URG" {
-			// Do not handle SIGURG, as in go1.14+, the go runtime issues
-			// SIGURG as an interrupt to support preemptable system calls on Linux.
 			continue
 		}
 		handledSigs = append(handledSigs, s)
