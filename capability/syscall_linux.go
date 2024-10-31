@@ -24,7 +24,7 @@ type capData struct {
 }
 
 func capget(hdr *capHeader, data *capData) (err error) {
-	_, _, e1 := syscall.Syscall(syscall.SYS_CAPGET, uintptr(unsafe.Pointer(hdr)), uintptr(unsafe.Pointer(data)), 0)
+	_, _, e1 := syscall.RawSyscall(syscall.SYS_CAPGET, uintptr(unsafe.Pointer(hdr)), uintptr(unsafe.Pointer(data)), 0)
 	if e1 != 0 {
 		err = e1
 	}
@@ -32,7 +32,7 @@ func capget(hdr *capHeader, data *capData) (err error) {
 }
 
 func capset(hdr *capHeader, data *capData) (err error) {
-	_, _, e1 := syscall.Syscall(syscall.SYS_CAPSET, uintptr(unsafe.Pointer(hdr)), uintptr(unsafe.Pointer(data)), 0)
+	_, _, e1 := syscall.RawSyscall(syscall.SYS_CAPSET, uintptr(unsafe.Pointer(hdr)), uintptr(unsafe.Pointer(data)), 0)
 	if e1 != 0 {
 		err = e1
 	}
@@ -49,7 +49,7 @@ const (
 )
 
 func prctl(option int, arg2, arg3 uintptr) (err error) {
-	_, _, e1 := syscall.Syscall(syscall.SYS_PRCTL, uintptr(option), arg2, arg3)
+	_, _, e1 := syscall.RawSyscall(syscall.SYS_PRCTL, uintptr(option), arg2, arg3)
 	if e1 != 0 {
 		err = e1
 	}
@@ -92,7 +92,7 @@ func getVfsCap(path string, dest *vfscapData) (err error) {
 	if err != nil {
 		return
 	}
-	r0, _, e1 := syscall.Syscall6(syscall.SYS_GETXATTR, uintptr(unsafe.Pointer(_p0)), uintptr(unsafe.Pointer(_vfsXattrName)), uintptr(unsafe.Pointer(dest)), vfscapDataSizeV2, 0, 0)
+	r0, _, e1 := syscall.RawSyscall6(syscall.SYS_GETXATTR, uintptr(unsafe.Pointer(_p0)), uintptr(unsafe.Pointer(_vfsXattrName)), uintptr(unsafe.Pointer(dest)), vfscapDataSizeV2, 0, 0)
 	if e1 != 0 {
 		if e1 == syscall.ENODATA {
 			dest.version = 2
@@ -145,7 +145,7 @@ func setVfsCap(path string, data *vfscapData) (err error) {
 	} else {
 		return syscall.EINVAL
 	}
-	_, _, e1 := syscall.Syscall6(syscall.SYS_SETXATTR, uintptr(unsafe.Pointer(_p0)), uintptr(unsafe.Pointer(_vfsXattrName)), uintptr(unsafe.Pointer(data)), size, 0, 0)
+	_, _, e1 := syscall.RawSyscall6(syscall.SYS_SETXATTR, uintptr(unsafe.Pointer(_p0)), uintptr(unsafe.Pointer(_vfsXattrName)), uintptr(unsafe.Pointer(data)), size, 0, 0)
 	if e1 != 0 {
 		err = e1
 	}
