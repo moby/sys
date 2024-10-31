@@ -150,6 +150,7 @@ func TestAmbientCapSet(t *testing.T) {
 }
 
 func childAmbientCapSet() {
+	runtime.LockOSThread()
 	// We can't use t.Log etc. here, yet filename and line number is nice
 	// to have. Set up and use the standard logger for this.
 	log.SetFlags(log.Lshortfile)
