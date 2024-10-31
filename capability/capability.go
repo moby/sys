@@ -142,3 +142,24 @@ func NewFile2(path string) (Capabilities, error) {
 func LastCap() (Cap, error) {
 	return lastCap()
 }
+
+// GetAmbient determines if a specific ambient capability is raised in the
+// calling thread.
+func GetAmbient(c Cap) (bool, error) {
+	return getAmbient(c)
+}
+
+// SetAmbient raises or lowers specified ambient capabilities for the calling
+// thread. To complete successfully, the prevailing effective capability set
+// must have a raised CAP_SETPCAP. Further, to raise a specific ambient
+// capability the inheritable and permitted sets of the calling thread must
+// already contain the specified capability.
+func SetAmbient(raise bool, caps ...Cap) error {
+	return setAmbient(raise, caps...)
+}
+
+// ResetAmbient resets all of the ambient capabilities for the calling thread
+// to their lowered value.
+func ResetAmbient() error {
+	return resetAmbient()
+}

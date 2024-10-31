@@ -56,6 +56,14 @@ func prctl(option int, arg2, arg3 uintptr) (err error) {
 	return
 }
 
+func prctlRetInt(option int, arg2, arg3 uintptr) (int, error) {
+	ret, _, err := syscall.RawSyscall(syscall.SYS_PRCTL, uintptr(option), arg2, arg3)
+	if err != 0 {
+		return 0, err
+	}
+	return int(ret), nil
+}
+
 const (
 	vfsXattrName = "security.capability"
 

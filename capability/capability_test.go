@@ -228,3 +228,88 @@ func TestApplyOtherProcess(t *testing.T) {
 		}
 	}
 }
+
+func TestGetSetResetAmbient(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		_, err := GetAmbient(Cap(0))
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		err = SetAmbient(false, Cap(0))
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		err = ResetAmbient()
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		return
+	}
+
+	requirePCapSet(t)
+	out := testInChild(t, childGetSetResetAmbient)
+	t.Logf("output from child:\n%s", out)
+}
+
+func childGetSetResetAmbient() {
+	runtime.LockOSThread()
+	log.SetFlags(log.Lshortfile)
+
+	pid, err := NewPid2(0)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	list := []Cap{CAP_KILL, CAP_CHOWN, CAP_SYS_CHROOT}
+	pid.Set(CAPS, list...)
+	if err = pid.Apply(CAPS); err != nil {
+		log.Fatal(err)
+	}
+
+	// Set ambient caps from list.
+	if err = SetAmbient(true, list...); err != nil {
+		log.Fatal(err)
+	}
+
+	// Check if they were set as expected.
+	for _, cap := range list {
+		want := true
+		got, err := GetAmbient(cap)
+		if err != nil {
+			log.Fatalf("GetAmbient(%s): want nil, got error %v", cap, err)
+		} else if want != got {
+			log.Fatalf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+
+	// Lower one ambient cap.
+	const unsetIdx = 1
+	if err = SetAmbient(false, list[unsetIdx]); err != nil {
+		log.Fatal(err)
+	}
+	// Check they are set as expected.
+	for i, cap := range list {
+		want := i != unsetIdx
+		got, err := GetAmbient(cap)
+		if err != nil {
+			log.Fatalf("GetAmbient(%s): want nil, got error %v", cap, err)
+		} else if want != got {
+			log.Fatalf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+
+	// Lower all ambient caps.
+	if err = ResetAmbient(); err != nil {
+		log.Fatal(err)
+	}
+	for _, cap := range list {
+		want := false
+		got, err := GetAmbient(cap)
+		if err != nil {
+			log.Fatalf("GetAmbient(%s): want nil, got error %v", cap, err)
+		} else if want != got {
+			log.Fatalf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+	os.Exit(0)
+}
