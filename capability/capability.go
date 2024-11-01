@@ -163,3 +163,14 @@ func SetAmbient(raise bool, caps ...Cap) error {
 func ResetAmbient() error {
 	return resetAmbient()
 }
+
+// GetBound determines if a specific bounding capability is raised in the
+// calling thread.
+func GetBound(c Cap) (bool, error) {
+	return getBound(c)
+}
+
+// DropBound lowers the specified bounding set capability.
+func DropBound(caps ...Cap) error {
+	return dropBound(caps...)
+}

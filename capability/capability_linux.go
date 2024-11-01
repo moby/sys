@@ -354,7 +354,7 @@ func (c *capsV3) Apply(kind CapType) error {
 					continue
 				}
 				// Ignore EINVAL since the capability may not be supported in this system.
-				err = ignoreEINVAL(prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0))
+				err = ignoreEINVAL(dropBound(i))
 				if err != nil {
 					return err
 				}
@@ -414,6 +414,24 @@ func setAmbient(raise bool, caps ...Cap) error {
 
 func resetAmbient() error {
 	return prctl(pr_CAP_AMBIENT, pr_CAP_AMBIENT_CLEAR_ALL, 0)
+}
+
+func getBound(c Cap) (bool, error) {
+	res, err := prctlRetInt(syscall.PR_CAPBSET_READ, uintptr(c), 0)
+	if err != nil {
+		return false, err
+	}
+	return res > 0, nil
+}
+
+func dropBound(caps ...Cap) error {
+	for _, val := range caps {
+		err := prctl(syscall.PR_CAPBSET_DROP, uintptr(val), 0)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func newFile(path string) (c Capabilities, err error) {

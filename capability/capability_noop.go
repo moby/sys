@@ -36,3 +36,11 @@ func setAmbient(_ bool, _ ...Cap) error {
 func resetAmbient() error {
 	return errNotSup
 }
+
+func getBound(_ Cap) (bool, error) {
+	return false, errNotSup
+}
+
+func dropBound(_ ...Cap) error {
+	return errNotSup
+}

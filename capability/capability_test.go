@@ -313,3 +313,63 @@ func childGetSetResetAmbient() {
 	}
 	os.Exit(0)
 }
+
+func TestGetBound(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		_, err := GetBound(Cap(0))
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		return
+	}
+
+	last, err := LastCap()
+	if err != nil {
+		t.Fatalf("LastCap: %v", err)
+	}
+	for i := Cap(0); i < Cap(63); i++ {
+		wantErr := i > last
+		set, err := GetBound(i)
+		t.Logf("GetBound(%q): %v, %v", i, set, err)
+		if wantErr && err == nil {
+			t.Errorf("GetBound(%q): want err, got nil", i)
+		} else if !wantErr && err != nil {
+			t.Errorf("GetBound(%q): want nil, got error %v", i, err)
+		}
+	}
+}
+
+func TestDropBound(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		err := DropBound(Cap(0))
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		return
+	}
+
+	requirePCapSet(t)
+	out := testInChild(t, childDropBound)
+	t.Logf("output from child:\n%s", out)
+}
+
+func childDropBound() {
+	runtime.LockOSThread()
+	log.SetFlags(log.Lshortfile)
+
+	for i := Cap(2); i < Cap(4); i++ {
+		err := DropBound(i)
+		if err != nil {
+			log.Fatalf("DropBound(%q): want nil, got error %v", i, err)
+		}
+		set, err := GetBound(i)
+		if err != nil {
+			log.Fatalf("GetBound(%q): want nil, got error %v", i, err)
+		}
+		if set {
+			log.Fatalf("GetBound(%q): want false, got true", i)
+		}
+	}
+
+	os.Exit(0)
+}
