@@ -42,7 +42,7 @@ func requirePCapSet(t testing.TB) {
 }
 
 // testInChild runs fn as a separate process, and returns its output.
-// This is useful for tests which manipulate capabilties, allowing to
+// This is useful for tests which manipulate capabilities, allowing to
 // preserve those of the main test process.
 //
 // The fn is a function which must end with os.Exit. In case exit code
@@ -150,6 +150,7 @@ func TestAmbientCapSet(t *testing.T) {
 }
 
 func childAmbientCapSet() {
+	runtime.LockOSThread()
 	// We can't use t.Log etc. here, yet filename and line number is nice
 	// to have. Set up and use the standard logger for this.
 	log.SetFlags(log.Lshortfile)
@@ -226,4 +227,149 @@ func TestApplyOtherProcess(t *testing.T) {
 			t.Errorf("Apply(%q): want error to contain %q; got %v", arg, expErr, err)
 		}
 	}
+}
+
+func TestGetSetResetAmbient(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		_, err := GetAmbient(Cap(0))
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		err = SetAmbient(false, Cap(0))
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		err = ResetAmbient()
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		return
+	}
+
+	requirePCapSet(t)
+	out := testInChild(t, childGetSetResetAmbient)
+	t.Logf("output from child:\n%s", out)
+}
+
+func childGetSetResetAmbient() {
+	runtime.LockOSThread()
+	log.SetFlags(log.Lshortfile)
+
+	pid, err := NewPid2(0)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	list := []Cap{CAP_KILL, CAP_CHOWN, CAP_SYS_CHROOT}
+	pid.Set(CAPS, list...)
+	if err = pid.Apply(CAPS); err != nil {
+		log.Fatal(err)
+	}
+
+	// Set ambient caps from list.
+	if err = SetAmbient(true, list...); err != nil {
+		log.Fatal(err)
+	}
+
+	// Check if they were set as expected.
+	for _, cap := range list {
+		want := true
+		got, err := GetAmbient(cap)
+		if err != nil {
+			log.Fatalf("GetAmbient(%s): want nil, got error %v", cap, err)
+		} else if want != got {
+			log.Fatalf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+
+	// Lower one ambient cap.
+	const unsetIdx = 1
+	if err = SetAmbient(false, list[unsetIdx]); err != nil {
+		log.Fatal(err)
+	}
+	// Check they are set as expected.
+	for i, cap := range list {
+		want := i != unsetIdx
+		got, err := GetAmbient(cap)
+		if err != nil {
+			log.Fatalf("GetAmbient(%s): want nil, got error %v", cap, err)
+		} else if want != got {
+			log.Fatalf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+
+	// Lower all ambient caps.
+	if err = ResetAmbient(); err != nil {
+		log.Fatal(err)
+	}
+	for _, cap := range list {
+		want := false
+		got, err := GetAmbient(cap)
+		if err != nil {
+			log.Fatalf("GetAmbient(%s): want nil, got error %v", cap, err)
+		} else if want != got {
+			log.Fatalf("Get(AMBIENT, %s): want %v, got %v", cap, want, got)
+		}
+	}
+	os.Exit(0)
+}
+
+func TestGetBound(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		_, err := GetBound(Cap(0))
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		return
+	}
+
+	last, err := LastCap()
+	if err != nil {
+		t.Fatalf("LastCap: %v", err)
+	}
+	for i := Cap(0); i < Cap(63); i++ {
+		wantErr := i > last
+		set, err := GetBound(i)
+		t.Logf("GetBound(%q): %v, %v", i, set, err)
+		if wantErr && err == nil {
+			t.Errorf("GetBound(%q): want err, got nil", i)
+		} else if !wantErr && err != nil {
+			t.Errorf("GetBound(%q): want nil, got error %v", i, err)
+		}
+	}
+}
+
+func TestDropBound(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		err := DropBound(Cap(0))
+		if err == nil {
+			t.Error(runtime.GOOS, ": want error, got nil")
+		}
+		return
+	}
+
+	requirePCapSet(t)
+	out := testInChild(t, childDropBound)
+	t.Logf("output from child:\n%s", out)
+}
+
+func childDropBound() {
+	runtime.LockOSThread()
+	log.SetFlags(log.Lshortfile)
+
+	for i := Cap(2); i < Cap(4); i++ {
+		err := DropBound(i)
+		if err != nil {
+			log.Fatalf("DropBound(%q): want nil, got error %v", i, err)
+		}
+		set, err := GetBound(i)
+		if err != nil {
+			log.Fatalf("GetBound(%q): want nil, got error %v", i, err)
+		}
+		if set {
+			log.Fatalf("GetBound(%q): want false, got true", i)
+		}
+	}
+
+	os.Exit(0)
 }
