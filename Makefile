@@ -1,4 +1,4 @@
-PACKAGES ?= capability mountinfo mount sequential signal symlink user userns # IMPORTANT: when updating this list, also update the conditional one in .github/workflows/test.yml
+PACKAGES ?= capability mountinfo mount reexec sequential signal symlink user userns # IMPORTANT: when updating this list, also update the conditional one in .github/workflows/test.yml
 BINDIR ?= _build/bin
 CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
 	freebsd/amd64 openbsd/amd64 darwin/amd64 darwin/arm64 windows/amd64
