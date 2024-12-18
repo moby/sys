@@ -11,6 +11,7 @@ all: clean lint test cross
 .PHONY: clean
 clean:
 	$(RM) mount/go-local.*
+	$(RM) */coverage.txt
 
 .PHONY: foreach
 foreach: ## Run $(CMD) for every package.
@@ -25,7 +26,7 @@ foreach: ## Run $(CMD) for every package.
 
 .PHONY: test
 test: test-local
-test: CMD=go test $(RUN_VIA_SUDO) -v .
+test: CMD=go test $(RUN_VIA_SUDO) -v -coverprofile=coverage.txt -covermode=atomic .
 test: foreach
 
 # Test the mount module against the local mountinfo source code instead of the

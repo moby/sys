@@ -44,6 +44,10 @@ jobs:
       run: |
         uname -a
         make test
+    - name: Send to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}  # used to upload coverage reports: https://github.com/moby/buildkit/pull/4660#issue-2142122533
 
   codespell:
     runs-on: ubuntu-24.04
