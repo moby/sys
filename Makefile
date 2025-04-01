@@ -1,4 +1,4 @@
-PACKAGES ?= capability mountinfo mount reexec sequential signal symlink user userns # IMPORTANT: when updating this list, also update the conditional one in .github/workflows/test.yml
+PACKAGES ?= atomicwriter capability mountinfo mount reexec sequential signal symlink user userns # IMPORTANT: when updating this list, also update the conditional one in .github/workflows/test.yml
 BINDIR ?= _build/bin
 CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
 	freebsd/amd64 openbsd/amd64 darwin/amd64 darwin/arm64 windows/amd64
@@ -29,9 +29,12 @@ test: test-local
 test: CMD=go test $(RUN_VIA_SUDO) -v -coverprofile=coverage.txt -covermode=atomic .
 test: foreach
 
-# Test the mount module against the local mountinfo source code instead of the
-# release specified in its go.mod. This allows catching regressions / breaking
-# changes in mountinfo.
+# Some modules in this repo have interdependencies:
+#  - mount depends on mountinfo
+#  - atomicwrite depends on sequential
+#
+# The code below tests these modules against their local dependencies
+# to catch regressions / breaking changes early.
 .PHONY: test-local
 test-local: MOD = -modfile=go-local.mod
 test-local:
@@ -39,6 +42,10 @@ test-local:
 	# Run go mod tidy to make sure mountinfo dependency versions are met.
 	cd mount && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .
 	$(RM) mount/go-local.*
+	echo 'replace github.com/moby/sys/sequential => ../sequential' | cat atomicwriter/go.mod - > atomicwriter/go-local.mod
+	# Run go mod tidy to make sure sequential dependency versions are met.
+	cd atomicwriter && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .
+	$(RM) atomicwriter/go-local.*
 
 .PHONY: lint
 lint: $(BINDIR)/golangci-lint
