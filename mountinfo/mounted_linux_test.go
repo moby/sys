@@ -279,7 +279,7 @@ func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported 
 	mounted, sure, err := MountedFast(path)
 	if err != nil {
 		// Got an error; is it expected?
-		if !(tc.isNotExist && errors.Is(err, os.ErrNotExist)) {
+		if !tc.isNotExist || !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("MountedFast: unexpected error: %v", err)
 		}
 
@@ -350,7 +350,7 @@ func TestMountedBy(t *testing.T) {
 				}
 			} else {
 				// Got an error; is it expected?
-				if !(tc.isNotExist && errors.Is(err, os.ErrNotExist)) {
+				if !tc.isNotExist || !errors.Is(err, os.ErrNotExist) {
 					t.Errorf("Mounted: unexpected error: %v", err)
 				}
 				// Check false is returned in error case.
