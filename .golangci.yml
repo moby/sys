@@ -1,20 +1,15 @@
 version: "2"
+
 linters:
   enable:
     - errorlint
     - unconvert
     - unparam
   exclusions:
-    generated: lax
+    generated: disable
     presets:
       - comments
-      - common-false-positives
-      - legacy
       - std-error-handling
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
   settings:
     staticcheck:
       # Enable all options, with some exceptions.
@@ -28,8 +23,4 @@ formatters:
   enable:
     - gofumpt
   exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+    generated: disable
