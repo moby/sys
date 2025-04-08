@@ -26,7 +26,7 @@ jobs:
       run: |
         # This corresponds with the list in Makefile:1, but omits the "userns"
         # and "capability" modules, which require go1.21 as minimum.
-        echo 'PACKAGES=atomicwriter mountinfo mount reexec sequential signal symlink user' >> $GITHUB_ENV
+        echo 'PACKAGES=atomicwriter mountinfo mount reexec seccomp sequential signal symlink user' >> $GITHUB_ENV
     - name: go mod tidy
       run: |
         make foreach CMD="go mod tidy"
