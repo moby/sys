@@ -19,6 +19,9 @@ var registeredInitializers = make(map[string]func())
 // Register adds an initialization func under the specified name. It panics
 // if the given name is already registered.
 func Register(name string, initializer func()) {
+	if filepath.Base(name) != name {
+		panic(fmt.Sprintf("reexec func does not expect a path component: %q", name))
+	}
 	if _, exists := registeredInitializers[name]; exists {
 		panic(fmt.Sprintf("reexec func already registered under name %q", name))
 	}
@@ -29,7 +32,7 @@ func Register(name string, initializer func()) {
 // Init is called as the first part of the exec process and returns true if an
 // initialization function was called.
 func Init() bool {
-	if initializer, ok := registeredInitializers[os.Args[0]]; ok {
+	if initializer, ok := registeredInitializers[filepath.Base(os.Args[0])]; ok {
 		initializer()
 		return true
 	}
