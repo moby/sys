@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -19,7 +20,11 @@ func init() {
 		panic("Return Error")
 	})
 	Register(testReExec2, func() {
-		fmt.Println("Hello " + testReExec2)
+		var args string
+		if len(os.Args) > 1 {
+			args = fmt.Sprintf("(args: %#v)", os.Args[1:])
+		}
+		fmt.Println("Hello", testReExec2, args)
 		os.Exit(0)
 	})
 	Init()
@@ -62,21 +67,32 @@ func TestRegister(t *testing.T) {
 
 func TestCommand(t *testing.T) {
 	tests := []struct {
-		doc  string
-		name string
+		doc        string
+		cmdAndArgs []string
+		expOut     string
 	}{
 		{
-			doc:  "basename",
-			name: testReExec2,
+			doc:        "basename",
+			cmdAndArgs: []string{testReExec2},
+			expOut:     "Hello test-reexec2",
 		},
 		{
-			doc:  "full path",
-			name: filepath.Join("something", testReExec2),
+			doc:        "full path",
+			cmdAndArgs: []string{filepath.Join("something", testReExec2)},
+			expOut:     `Hello test-reexec2`,
+		},
+		{
+			doc:        "command with args",
+			cmdAndArgs: []string{testReExec2, "--some-flag", "some-value", "arg1", "arg2"},
+			expOut:     `Hello test-reexec2 (args: []string{"--some-flag", "some-value", "arg1", "arg2"})`,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.doc, func(t *testing.T) {
-			cmd := Command(tc.name)
+			cmd := Command(tc.cmdAndArgs...)
+			if !reflect.DeepEqual(cmd.Args, tc.cmdAndArgs) {
+				t.Fatalf("got %+v, want %+v", cmd.Args, tc.cmdAndArgs)
+			}
 			w, err := cmd.StdinPipe()
 			if err != nil {
 				t.Fatalf("Error on pipe creation: %v", err)
@@ -88,10 +104,9 @@ func TestCommand(t *testing.T) {
 				t.Errorf("Error on re-exec cmd: %v, out: %v", err, string(out))
 			}
 
-			const expected = "Hello " + testReExec2
 			actual := strings.TrimSpace(string(out))
-			if actual != expected {
-				t.Errorf("got %v, want %v", actual, expected)
+			if actual != tc.expOut {
+				t.Errorf("got %v, want %v", actual, tc.expOut)
 			}
 		})
 	}
