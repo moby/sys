@@ -122,12 +122,14 @@ func TestCommand(t *testing.T) {
 }
 
 func TestCommandContext(t *testing.T) {
+	testError := errors.New("test-error: the command was canceled")
+
 	tests := []struct {
 		doc        string
 		cmdAndArgs []string
 		cancel     bool
 		expOut     string
-		expError   bool
+		expError   error
 	}{
 		{
 			doc:        "basename",
@@ -148,13 +150,13 @@ func TestCommandContext(t *testing.T) {
 			doc:        "context canceled",
 			cancel:     true,
 			cmdAndArgs: []string{testReExec2},
-			expError:   true,
+			expError:   context.Canceled,
 		},
 		{
 			doc:        "context timeout",
 			cmdAndArgs: []string{testReExec3},
 			expOut:     "Hello test-reexec3",
-			expError:   true,
+			expError:   testError,
 		},
 	}
 
@@ -167,6 +169,9 @@ func TestCommandContext(t *testing.T) {
 			if !reflect.DeepEqual(cmd.Args, tc.cmdAndArgs) {
 				t.Fatalf("got %+v, want %+v", cmd.Args, tc.cmdAndArgs)
 			}
+			cmd.Cancel = func() error {
+				return testError
+			}
 
 			w, err := cmd.StdinPipe()
 			if err != nil {
@@ -177,17 +182,8 @@ func TestCommandContext(t *testing.T) {
 				cancel()
 			}
 			out, err := cmd.CombinedOutput()
-			if tc.cancel {
-				if !errors.Is(err, context.Canceled) {
-					t.Errorf("got %[1]v (%[1]T), want %v", err, context.Canceled)
-				}
-			}
-			if tc.expError {
-				if err == nil {
-					t.Errorf("expected error, got nil")
-				}
-			} else if err != nil {
-				t.Errorf("error on re-exec cmd: %v, out: %v", err, string(out))
+			if !errors.Is(err, tc.expError) {
+				t.Errorf("expected %v, got: %v", tc.expError, err)
 			}
 
 			actual := strings.TrimSpace(string(out))
