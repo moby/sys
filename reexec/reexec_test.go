@@ -1,6 +1,7 @@
 package reexec
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -108,8 +109,14 @@ func TestNaiveSelf(t *testing.T) {
 		t.Fatalf("Unable to start command: %v", err)
 	}
 	err = cmd.Wait()
+
+	var expError *exec.ExitError
+	if !errors.As(err, &expError) {
+		t.Fatalf("got %T, want %T", err, expError)
+	}
+
 	const expected = "exit status 2"
-	if err == nil || err.Error() != expected {
+	if err.Error() != expected {
 		t.Fatalf("got %v, want %v", err, expected)
 	}
 
