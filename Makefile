@@ -1,5 +1,4 @@
 PACKAGES ?= atomicwriter capability mountinfo mount reexec sequential signal symlink user userns
-BINDIR ?= _build/bin
 CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
 	freebsd/amd64 openbsd/amd64 darwin/amd64 darwin/arm64 windows/amd64
 SUDO ?= sudo -n
@@ -47,18 +46,14 @@ test-local:
 	cd atomicwriter && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .
 	$(RM) atomicwriter/go-local.*
 
+.PHONY: golangci-lint-version
+golangci-lint-version:
+	golangci-lint version
+
 .PHONY: lint
-lint: $(BINDIR)/golangci-lint
-lint: CMD=go mod download; ../$(BINDIR)/golangci-lint run
+lint: golangci-lint-version
+lint: CMD=go mod download; golangci-lint run
 lint: foreach
-lint:
-	$(BINDIR)/golangci-lint version
-
-$(BINDIR)/golangci-lint: $(BINDIR)
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINDIR) v2.0.2
-
-$(BINDIR):
-	mkdir -p $(BINDIR)
 
 .PHONY: cross
 cross:
