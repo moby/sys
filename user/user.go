@@ -56,11 +56,11 @@ type IDMap struct {
 	Count    int64
 }
 
-func parseLine(line []byte, v ...interface{}) {
+func parseLine(line []byte, v ...any) {
 	parseParts(bytes.Split(line, []byte(":")), v...)
 }
 
-func parseParts(parts [][]byte, v ...interface{}) {
+func parseParts(parts [][]byte, v ...any) {
 	if len(parts) == 0 {
 		return
 	}
