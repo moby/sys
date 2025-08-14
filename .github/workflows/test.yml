@@ -4,7 +4,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.18.x, 1.23.x, 1.24.x]
+        go-version: [1.18.x, oldstable, stable]
         platform: [ubuntu-22.04, ubuntu-24.04, windows-latest, macos-13, macos-14, macos-15]
     runs-on: ${{ matrix.platform }}
     defaults:
@@ -24,10 +24,21 @@ jobs:
     - name: Set PACKAGES env
       if: ${{ matrix.go-version == '1.18.x' }}
       run: |
-        # This corresponds with the list in Makefile:1, but omits the "userns"
-        # and "capability" modules, which require go1.21 as minimum, and "reexec",
-        # which requires go1.20 in tests.
-        echo 'PACKAGES=atomicwriter mountinfo mount sequential signal symlink user' >> $GITHUB_ENV
+        # Check if the module supports this version of Go.
+        go_version="$(go env GOVERSION)"
+        go_version="${go_version#go}"
+        
+        packages=""
+        for p in */; do
+          [ -f "$p/go.mod" ] || continue
+          if ! (cd "$p" && go list -m -f "{{if gt .GoVersion \"$go_version\"}}ko{{end}}" | grep -q ko); then
+            packages+="${p%/} "
+          else
+            echo "::notice::SKIP: github.com/moby/sys/${p%/} requires a more recent version of Go"
+          fi
+        done
+        
+        echo "PACKAGES=${packages}" >> "$GITHUB_ENV"
     - name: go mod tidy
       run: |
         make foreach CMD="go mod tidy"
