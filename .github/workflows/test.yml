@@ -21,6 +21,13 @@ jobs:
         # the cache key, and specifying multiple go.sums is not trivial
         # (see https://github.com/moby/sys/pull/160 for details).
         cache: false
+    - name: Install golangci-lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: v2.4
+        # We don't need to run golangci-lint here yet, but
+        # there's no way to avoid it, so run it on one module.
+        working-directory: ./mountinfo
     - name: Set PACKAGES env
       if: ${{ matrix.go-version == '1.18.x' }}
       run: |
