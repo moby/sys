@@ -81,11 +81,12 @@ func Self() string {
 	if runtime.GOOS == "linux" {
 		return "/proc/self/exe"
 	}
-	return naiveSelf()
+	return naiveSelf(os.Args[0])
 }
 
-func naiveSelf() string {
-	name := os.Args[0]
+// naiveSelf is a separate function to allow testing in isolation on Linux.
+func naiveSelf(argv0 string) string {
+	name := argv0
 	if filepath.Base(name) == name {
 		if lp, err := exec.LookPath(name); err == nil {
 			return lp
