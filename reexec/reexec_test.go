@@ -36,7 +36,10 @@ func init() {
 		time.Sleep(1 * time.Second)
 		os.Exit(0)
 	})
-	Init()
+	if Init() {
+		// Make sure we exit in case re-exec didn't os.Exit on its own.
+		os.Exit(0)
+	}
 }
 
 func TestRegister(t *testing.T) {
@@ -199,7 +202,7 @@ func TestNaiveSelf(t *testing.T) {
 		os.Exit(2)
 	}
 	cmd := exec.Command(naiveSelf(), "-test.run=TestNaiveSelf")
-	cmd.Env = append(os.Environ(), "TEST_CHECK=1")
+	cmd.Env = append(cmd.Environ(), "TEST_CHECK=1")
 	err := cmd.Start()
 	if err != nil {
 		t.Fatalf("Unable to start command: %v", err)
