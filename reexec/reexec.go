@@ -13,6 +13,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/moby/sys/reexec/internal/reexecoverride"
 )
 
 var registeredInitializers = make(map[string]func())
@@ -78,6 +80,9 @@ func CommandContext(ctx context.Context, args ...string) *exec.Cmd {
 // "my-binary" at "/usr/bin/" (or "my-binary.exe" at "C:\" on Windows),
 // then it returns "/usr/bin/my-binary" and "C:\my-binary.exe" respectively.
 func Self() string {
+	if argv0, ok := reexecoverride.Argv0(); ok {
+		return naiveSelf(argv0)
+	}
 	if runtime.GOOS == "linux" {
 		return "/proc/self/exe"
 	}
