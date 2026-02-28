@@ -168,7 +168,7 @@ func TestCommandContext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.doc, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 			defer cancel()
 
 			cmd := reexec.CommandContext(ctx, tc.cmdAndArgs...)
@@ -208,7 +208,7 @@ func TestCommandContext(t *testing.T) {
 // [reexecoverride.OverrideArgv0] so that the fallback logic is exercised
 // consistently across platforms.
 func TestRunNaiveSelf(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	// Force Self() to use naiveSelf(os.Args[0]), instead of "/proc/self/exe" on Linux.
