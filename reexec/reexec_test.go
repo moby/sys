@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -197,30 +198,75 @@ func TestCommandContext(t *testing.T) {
 	}
 }
 
-func TestNaiveSelf(t *testing.T) {
-	if os.Getenv("TEST_CHECK") == "1" {
-		os.Exit(2)
-	}
-	cmd := exec.Command(naiveSelf(), "-test.run=TestNaiveSelf")
-	cmd.Env = append(cmd.Environ(), "TEST_CHECK=1")
-	err := cmd.Start()
+// TestRunNaiveSelf verifies that reexec.Self() (and thus CommandContext)
+// can resolve a path that can be used to re-execute the current test binary
+// when it falls back to the argv[0]-based implementation.
+//
+// It invokes the binary via naiveSelf (intentionally bypassing the Linux
+// /proc/self/exe fast-path) so the fallback logic is exercised consistently
+// across platforms.
+func TestRunNaiveSelf(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	// Similar to [rexec.CommandContext], but using naiveSelf to skip the
+	// optimized "/proc/self/exe" on Linux.
+	cmd := exec.CommandContext(ctx, naiveSelf(os.Args[0]), testReExec2)
+	cmd.Args = cmd.Args[1:]
+
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Unable to start command: %v", err)
 	}
-	err = cmd.Wait()
 
-	var expError *exec.ExitError
-	if !errors.As(err, &expError) {
-		t.Fatalf("got %T, want %T", err, expError)
+	expOut := "Hello test-reexec2"
+	actual := strings.TrimSpace(string(out))
+	if actual != expOut {
+		t.Errorf("got %v, want %v", actual, expOut)
 	}
+}
 
-	const expected = "exit status 2"
-	if err.Error() != expected {
-		t.Fatalf("got %v, want %v", err, expected)
-	}
-
-	os.Args[0] = "mkdir"
-	if naiveSelf() == os.Args[0] {
-		t.Fatalf("Expected naiveSelf to resolve the location of mkdir")
-	}
+func TestNaiveSelfResolve(t *testing.T) {
+	t.Run("resolve in PATH", func(t *testing.T) {
+		executable := "sh"
+		if runtime.GOOS == "windows" {
+			executable = "cmd"
+		}
+		resolved := naiveSelf(executable)
+		if resolved == executable {
+			t.Errorf("did not resolve via PATH; got %q", resolved)
+		}
+		if !filepath.IsAbs(resolved) {
+			t.Errorf("expected absolute path; got %q", resolved)
+		}
+	})
+	t.Run("not in PATH", func(t *testing.T) {
+		const executable = "some-nonexistent-executable"
+		want, err := filepath.Abs(executable)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resolved := naiveSelf(executable)
+		if resolved != want {
+			t.Errorf("expected absolute path; got %q, want %q", resolved, want)
+		}
+	})
+	t.Run("relative path", func(t *testing.T) {
+		executable := filepath.Join(".", "some-executable")
+		want, err := filepath.Abs(executable)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resolved := naiveSelf(executable)
+		if resolved != want {
+			t.Errorf("expected absolute path; got %q, want %q", resolved, want)
+		}
+	})
+	t.Run("absolute path unchanged", func(t *testing.T) {
+		executable := filepath.Join(os.TempDir(), "some-executable")
+		resolved := naiveSelf(executable)
+		if resolved != executable {
+			t.Errorf("should not modify absolute paths; got %q, want %q", resolved, executable)
+		}
+	})
 }
