@@ -1,17 +1,19 @@
-package reexec
+package reexec_test
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/moby/sys/reexec"
+	"github.com/moby/sys/reexec/internal/reexecoverride"
 )
 
 const (
@@ -21,10 +23,10 @@ const (
 )
 
 func init() {
-	Register(testReExec, func() {
+	reexec.Register(testReExec, func() {
 		panic("Return Error")
 	})
-	Register(testReExec2, func() {
+	reexec.Register(testReExec2, func() {
 		var args string
 		if len(os.Args) > 1 {
 			args = fmt.Sprintf("(args: %#v)", os.Args[1:])
@@ -32,12 +34,12 @@ func init() {
 		fmt.Println("Hello", testReExec2, args)
 		os.Exit(0)
 	})
-	Register(testReExec3, func() {
+	reexec.Register(testReExec3, func() {
 		fmt.Println("Hello " + testReExec3)
 		time.Sleep(1 * time.Second)
 		os.Exit(0)
 	})
-	if Init() {
+	if reexec.Init() {
 		// Make sure we exit in case re-exec didn't os.Exit on its own.
 		os.Exit(0)
 	}
@@ -73,7 +75,7 @@ func TestRegister(t *testing.T) {
 					t.Errorf("got %q, want %q", r, tc.expectedErr)
 				}
 			}()
-			Register(tc.name, func() {})
+			reexec.Register(tc.name, func() {})
 		})
 	}
 }
@@ -102,7 +104,7 @@ func TestCommand(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.doc, func(t *testing.T) {
-			cmd := Command(tc.cmdAndArgs...)
+			cmd := reexec.Command(tc.cmdAndArgs...)
 			if !reflect.DeepEqual(cmd.Args, tc.cmdAndArgs) {
 				t.Fatalf("got %+v, want %+v", cmd.Args, tc.cmdAndArgs)
 			}
@@ -169,7 +171,7 @@ func TestCommandContext(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 
-			cmd := CommandContext(ctx, tc.cmdAndArgs...)
+			cmd := reexec.CommandContext(ctx, tc.cmdAndArgs...)
 			if !reflect.DeepEqual(cmd.Args, tc.cmdAndArgs) {
 				t.Fatalf("got %+v, want %+v", cmd.Args, tc.cmdAndArgs)
 			}
@@ -202,18 +204,17 @@ func TestCommandContext(t *testing.T) {
 // can resolve a path that can be used to re-execute the current test binary
 // when it falls back to the argv[0]-based implementation.
 //
-// It invokes the binary via naiveSelf (intentionally bypassing the Linux
-// /proc/self/exe fast-path) so the fallback logic is exercised consistently
-// across platforms.
+// It forces Self() to bypass the Linux /proc/self/exe fast-path via
+// [reexecoverride.OverrideArgv0] so that the fallback logic is exercised
+// consistently across platforms.
 func TestRunNaiveSelf(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	// Similar to [rexec.CommandContext], but using naiveSelf to skip the
-	// optimized "/proc/self/exe" on Linux.
-	cmd := exec.CommandContext(ctx, naiveSelf(os.Args[0]), testReExec2)
-	cmd.Args = cmd.Args[1:]
+	// Force Self() to use naiveSelf(os.Args[0]), instead of "/proc/self/exe" on Linux.
+	reexecoverride.OverrideArgv0(t, os.Args[0])
 
+	cmd := reexec.CommandContext(ctx, testReExec2)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Unable to start command: %v", err)
@@ -227,12 +228,23 @@ func TestRunNaiveSelf(t *testing.T) {
 }
 
 func TestNaiveSelfResolve(t *testing.T) {
+	t.Run("fast path on Linux", func(t *testing.T) {
+		if runtime.GOOS != "linux" {
+			t.Skip("only supported on Linux")
+		}
+		resolved := reexec.Self()
+		expected := "/proc/self/exe"
+		if resolved != expected {
+			t.Errorf("got %v, want %v", resolved, expected)
+		}
+	})
 	t.Run("resolve in PATH", func(t *testing.T) {
 		executable := "sh"
 		if runtime.GOOS == "windows" {
 			executable = "cmd"
 		}
-		resolved := naiveSelf(executable)
+		reexecoverride.OverrideArgv0(t, executable)
+		resolved := reexec.Self()
 		if resolved == executable {
 			t.Errorf("did not resolve via PATH; got %q", resolved)
 		}
@@ -242,7 +254,8 @@ func TestNaiveSelfResolve(t *testing.T) {
 	})
 	t.Run("not in PATH", func(t *testing.T) {
 		const executable = "some-nonexistent-executable"
-		resolved := naiveSelf(executable)
+		reexecoverride.OverrideArgv0(t, executable)
+		resolved := reexec.Self()
 		want, _ := filepath.Abs(executable)
 		if resolved != want {
 			t.Errorf("expected absolute path; got %q, want %q", resolved, want)
@@ -250,7 +263,8 @@ func TestNaiveSelfResolve(t *testing.T) {
 	})
 	t.Run("relative path", func(t *testing.T) {
 		executable := filepath.Join(".", "some-executable")
-		resolved := naiveSelf(executable)
+		reexecoverride.OverrideArgv0(t, executable)
+		resolved := reexec.Self()
 		want, _ := filepath.Abs(executable)
 		if resolved != want {
 			t.Errorf("expected absolute path; got %q, want %q", resolved, want)
@@ -258,7 +272,8 @@ func TestNaiveSelfResolve(t *testing.T) {
 	})
 	t.Run("absolute path unchanged", func(t *testing.T) {
 		executable := filepath.Join(os.TempDir(), "some-executable")
-		resolved := naiveSelf(executable)
+		reexecoverride.OverrideArgv0(t, executable)
+		resolved := reexec.Self()
 		if resolved != executable {
 			t.Errorf("should not modify absolute paths; got %q, want %q", resolved, executable)
 		}
