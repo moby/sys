@@ -40,7 +40,7 @@ jobs:
     - name: Install golangci-lint
       uses: golangci/golangci-lint-action@v9
       with:
-        version: v2.4
+        version: v2.10
         # We don't need to run golangci-lint here yet, but
         # there's no way to avoid it, so run it on one module.
         working-directory: ./mountinfo
