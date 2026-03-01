@@ -37,7 +37,7 @@ jobs:
         # (see https://github.com/moby/sys/pull/160 for details).
         cache: false
     - name: Install golangci-lint
-      uses: golangci/golangci-lint-action@v8
+      uses: golangci/golangci-lint-action@v9
       with:
         version: v2.4
         # We don't need to run golangci-lint here yet, but
