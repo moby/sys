@@ -1,5 +1,20 @@
-on: [push, pull_request]
 name: Test
+
+# Default to 'contents: read', which grants actions to read commits.
+#
+# If any permission is set, any permission not included in the list is
+# implicitly set to "none".
+#
+# see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on: [push, pull_request]
+
 jobs:
   test:
     strategy:
@@ -7,14 +22,15 @@ jobs:
         go-version: [1.18.x, oldstable, stable]
         platform: [ubuntu-22.04, ubuntu-24.04, windows-2022, windows-2025, macos-15, macos-26]
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 10 # guardrails timeout for the whole job
     defaults:
       run:
         shell: bash
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Install Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go-version }}
         # Disable caching as we don't have top-level go.sum needed for
@@ -22,9 +38,9 @@ jobs:
         # (see https://github.com/moby/sys/pull/160 for details).
         cache: false
     - name: Install golangci-lint
-      uses: golangci/golangci-lint-action@v8
+      uses: golangci/golangci-lint-action@v9
       with:
-        version: v2.4
+        version: v2.10
         # We don't need to run golangci-lint here yet, but
         # there's no way to avoid it, so run it on one module.
         working-directory: ./mountinfo
@@ -70,7 +86,8 @@ jobs:
 
   codespell:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10 # guardrails timeout for the whole job
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - run: pip install --break-system-packages codespell==v2.3.0
     - run: codespell
