@@ -80,15 +80,32 @@ import (
 	"github.com/moby/sys/reexec/internal/reexecoverride"
 )
 
-var entrypoints = make(map[string]func())
+var entrypoints = make(map[string]func(context.Context) error)
 
 // Register associates name with an entrypoint function to be executed when
 // the current binary is invoked with argv[0] equal to name.
 //
 // Register is not safe for concurrent use; entrypoints must be registered
-// during program initialization, before calling [Init].
+// during program initialization, before calling [Dispatch] or [Init].
 // It panics if name contains a path component or is already registered.
 func Register(name string, entrypoint func()) {
+	registerEntrypoint(name, func(context.Context) error {
+		entrypoint()
+		return nil
+	})
+}
+
+// RegisterContext is like [Register] but the entrypoint receives a context and
+// reports success or failure by returning an error.
+//
+// RegisterContext is not safe for concurrent use; entrypoints must be
+// registered during program initialization, before calling [Dispatch] or [Init].
+// It panics if name contains a path component or is already registered.
+func RegisterContext(name string, entrypoint func(context.Context) error) {
+	registerEntrypoint(name, entrypoint)
+}
+
+func registerEntrypoint(name string, entrypoint func(context.Context) error) {
 	if filepath.Base(name) != name {
 		panic(fmt.Sprintf("reexec func does not expect a path component: %q", name))
 	}
@@ -99,18 +116,40 @@ func Register(name string, entrypoint func()) {
 	entrypoints[name] = entrypoint
 }
 
+// Dispatch checks whether the current process was invoked under a registered
+// name (based on filepath.Base(os.Args[0])).
+//
+// If a matching entrypoint is found, it is executed and Dispatch reports a
+// match with ok. If ok is false, err is always nil. If ok is true, err is the
+// entrypoint's return value.
+//
+// In the ok=true case, the caller should stop normal main execution (typically
+// by returning from main or calling os.Exit).
+func Dispatch(ctx context.Context) (bool, error) {
+	return dispatch(ctx)
+}
+
 // Init checks whether the current process was invoked under a registered name
 // (based on filepath.Base(os.Args[0])).
 //
 // If a matching entrypoint is found, it is executed and Init returns true. In
 // that case, the caller should stop normal main execution. If no match is found,
 // Init returns false and normal execution should continue.
+//
+// Init is provided for compatibility with older callers. New code should
+// prefer [Dispatch], which also return the entrypoint's error and allows
+// the caller to decide how to report failures.
 func Init() bool {
-	if entrypoint, ok := entrypoints[filepath.Base(os.Args[0])]; ok {
-		entrypoint()
-		return true
+	ok, _ := dispatch(context.Background())
+	return ok
+}
+
+func dispatch(ctx context.Context) (bool, error) {
+	entrypoint, ok := entrypoints[filepath.Base(os.Args[0])]
+	if !ok {
+		return false, nil
 	}
-	return false
+	return true, entrypoint(ctx)
 }
 
 // Command returns an [*exec.Cmd] configured to re-execute the current binary,
