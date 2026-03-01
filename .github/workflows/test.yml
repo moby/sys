@@ -27,7 +27,7 @@ jobs:
         shell: bash
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Install Go
       uses: actions/setup-go@v5
       with:
@@ -86,6 +86,6 @@ jobs:
   codespell:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - run: pip install --break-system-packages codespell==v2.3.0
     - run: codespell
