@@ -28,6 +28,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/opencontainers/cgroups/devices/config"
 	"golang.org/x/sys/unix"
 )
 
@@ -105,8 +106,8 @@ func TestHostDevicesAllValid(t *testing.T) {
 			t.Errorf("device entry %+v has zero major number", device)
 		}
 		switch device.Type {
-		case BlockDevice, CharDevice:
-		case FifoDevice:
+		case config.BlockDevice, config.CharDevice:
+		case config.FifoDevice:
 			t.Logf("fifo devices shouldn't show up from HostDevices")
 			fallthrough
 		default:
