@@ -1,4 +1,4 @@
-PACKAGES ?= atomicwriter capability mountinfo mount reexec sequential signal symlink user userns
+PACKAGES ?= atomicwriter capability devices mountinfo mount reexec sequential signal symlink user userns
 CROSS ?= linux/arm linux/arm64 linux/ppc64le linux/s390x \
 	freebsd/amd64 openbsd/amd64 darwin/amd64 darwin/arm64 windows/amd64
 SUDO ?= sudo -n
