@@ -26,6 +26,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/opencontainers/cgroups/devices/config"
@@ -79,7 +80,7 @@ func TestHostDevicesIoutilReadDirDeepFailure(t *testing.T) {
 		called = true
 
 		// Provoke a second call.
-		fi, err := os.Lstat("/tmp")
+		fi, err := os.Stat("/tmp")
 		if err != nil {
 			t.Fatalf("Unexpected error %v", err)
 		}
@@ -101,9 +102,13 @@ func TestHostDevicesAllValid(t *testing.T) {
 	}
 
 	for _, device := range devices {
-		// Devices can't have major number 0.
+		// Devices can't have major number 0 on Linux.
 		if device.Major == 0 {
-			t.Errorf("device entry %+v has zero major number", device)
+			logFn := t.Logf
+			if runtime.GOOS == "linux" {
+				logFn = t.Errorf
+			}
+			logFn("device entry %+v has zero major number", device)
 		}
 		switch device.Type {
 		case config.BlockDevice, config.CharDevice:
