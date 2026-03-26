@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -373,12 +374,7 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 			// If the group argument isn't explicit, we'll just search for it.
 			if groupArg == "" {
 				// Check if user is a member of this group.
-				for _, u := range g.List {
-					if u == matchedUserName {
-						return true
-					}
-				}
-				return false
+				return slices.Contains(g.List, matchedUserName)
 			}
 
 			if gidErr == nil {
