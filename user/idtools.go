@@ -3,6 +3,21 @@ package user
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+)
+
+// FS is the filesystem contract used by the Mkdir*AndChownFS helpers.
+type FS interface {
+	Stat(name string) (os.FileInfo, error)
+	Mkdir(name string, perm os.FileMode) error
+	MkdirAll(name string, perm os.FileMode) error
+	Chmod(name string, mode os.FileMode) error
+	Chown(name string, uid, gid int) error
+}
+
+var (
+	_ FS = &os.Root{}
+	_ FS = &hostFS{}
 )
 
 // MkdirOpt is a type for options to pass to Mkdir calls
@@ -23,12 +38,24 @@ func WithOnlyNew(o *mkdirOptions) {
 // function will still change ownership and permissions. If WithOnlyNew is passed as an
 // option, then only the newly created directories will have ownership and permissions changed.
 func MkdirAllAndChown(path string, mode os.FileMode, uid, gid int, opts ...MkdirOpt) error {
-	var options mkdirOptions
-	for _, opt := range opts {
-		opt(&options)
+	return MkdirAllAndChownFS(nil, path, mode, uid, gid, opts...)
+}
+
+// MkdirAllAndChownFS creates a directory (including any along the path) on the
+// provided filesystem and then modifies ownership to the requested uid/gid. If
+// fsys is nil, the host filesystem is used.
+func MkdirAllAndChownFS(fsys FS, path string, mode os.FileMode, uid, gid int, opts ...MkdirOpt) error {
+	if fsys == nil {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+		fsys = &hostFS{}
+		path = absPath
 	}
 
-	return mkdirAs(path, mode, uid, gid, true, options.onlyNew)
+	options := mkdirOpts(opts)
+	return mkdirAs(fsys, path, mode, uid, gid, true, options.onlyNew)
 }
 
 // MkdirAndChown creates a directory and then modifies ownership to the requested uid/gid.
@@ -38,11 +65,32 @@ func MkdirAllAndChown(path string, mode os.FileMode, uid, gid int, opts ...Mkdir
 // Note that unlike os.Mkdir(), this function does not return IsExist error
 // in case path already exists.
 func MkdirAndChown(path string, mode os.FileMode, uid, gid int, opts ...MkdirOpt) error {
+	return MkdirAndChownFS(nil, path, mode, uid, gid, opts...)
+}
+
+// MkdirAndChownFS creates a directory on the provided filesystem and then
+// modifies ownership to the requested uid/gid. If fsys is nil, the host
+// filesystem is used.
+func MkdirAndChownFS(fsys FS, path string, mode os.FileMode, uid, gid int, opts ...MkdirOpt) error {
+	if fsys == nil {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+		fsys = &hostFS{}
+		path = absPath
+	}
+
+	options := mkdirOpts(opts)
+	return mkdirAs(fsys, path, mode, uid, gid, false, options.onlyNew)
+}
+
+func mkdirOpts(opts []MkdirOpt) mkdirOptions {
 	var options mkdirOptions
 	for _, opt := range opts {
 		opt(&options)
 	}
-	return mkdirAs(path, mode, uid, gid, false, options.onlyNew)
+	return options
 }
 
 // getRootUIDGID retrieves the remapped root uid/gid pair from the set of maps.
@@ -138,4 +186,26 @@ func (i IdentityMapping) ToContainer(uid, gid int) (int, int, error) {
 // Empty returns true if there are no id mappings
 func (i IdentityMapping) Empty() bool {
 	return len(i.UIDMaps) == 0 && len(i.GIDMaps) == 0
+}
+
+type hostFS struct{}
+
+func (*hostFS) Stat(name string) (os.FileInfo, error) {
+	return os.Stat(name)
+}
+
+func (*hostFS) Mkdir(name string, perm os.FileMode) error {
+	return os.Mkdir(name, perm)
+}
+
+func (*hostFS) MkdirAll(name string, perm os.FileMode) error {
+	return os.MkdirAll(name, perm)
+}
+
+func (*hostFS) Chmod(name string, mode os.FileMode) error {
+	return os.Chmod(name, mode)
+}
+
+func (*hostFS) Chown(name string, uid, gid int) error {
+	return os.Chown(name, uid, gid)
 }
