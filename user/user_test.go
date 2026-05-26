@@ -104,6 +104,8 @@ root:x:0:0:root user:/root:/bin/bash
 adm:x:42:43:adm:/var/adm:/bin/false
 111:x:222:333::/var/garbage
 odd:x:111:112::/home/odd:::::
+2147483647:x:0:0:maxint32:/root:/bin/bash
+2147483648:x:0:0:toolarge:/root:/bin/bash
 user7456:x:7456:100:Vasya:/home/user7456
 this is just some garbage data
 `
@@ -113,6 +115,8 @@ adm:x:43:
 grp:x:1234:root,adm,user7456
 444:x:555:111
 odd:x:444:
+2147483647:x:1235:
+2147483648:x:1236:
 this is just some garbage data
 ` + largeGroup()
 
@@ -229,6 +233,33 @@ this is just some garbage data
 				Home:  "/home/user7456",
 			},
 		},
+		{
+			ref: "7456:2147483647",
+			expected: ExecUser{
+				Uid:   7456,
+				Gid:   2147483647, // maxID
+				Sgids: defaultExecUser.Sgids,
+				Home:  "/home/user7456",
+			},
+		},
+		{
+			ref: "2147483647:43",
+			expected: ExecUser{
+				Uid:   2147483647, // maxID
+				Gid:   43,
+				Sgids: defaultExecUser.Sgids,
+				Home:  defaultExecUser.Home,
+			},
+		},
+		{
+			ref: "2147483647",
+			expected: ExecUser{
+				Uid:   2147483647, // maxID
+				Gid:   defaultExecUser.Gid,
+				Sgids: defaultExecUser.Sgids,
+				Home:  defaultExecUser.Home,
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -260,12 +291,16 @@ func TestGetExecUserInvalid(t *testing.T) {
 root:x:0:0:root user:/root:/bin/bash
 adm:x:42:43:adm:/var/adm:/bin/false
 -42:x:12:13:broken:/very/broken
+2147483647:x:0:0:maxint32:/root:/bin/bash
+2147483648:x:0:0:toolarge:/root:/bin/bash
 this is just some garbage data
 `
 	const groupContent = `
 root:x:0:root
 adm:x:43:
 grp:x:1234:root,adm
+2147483647:x:1235:
+2147483648:x:1236:
 this is just some garbage data
 `
 
@@ -284,6 +319,9 @@ this is just some garbage data
 		"-5:-2",
 		"-42",
 		"-43",
+		"42:2147483648", // maxID + 1
+		"2147483648:43", // maxID + 1
+		"2147483648",    // maxID + 1
 	}
 
 	for _, tc := range tests {
