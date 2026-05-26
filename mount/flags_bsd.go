@@ -1,4 +1,4 @@
-//go:build freebsd || openbsd
+//go:build darwin || freebsd || openbsd
 
 package mount
 
