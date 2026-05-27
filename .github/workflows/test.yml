@@ -28,9 +28,9 @@ jobs:
         shell: bash
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     - name: Install Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ matrix.go-version }}
         # Disable caching as we don't have top-level go.sum needed for
@@ -38,7 +38,7 @@ jobs:
         # (see https://github.com/moby/sys/pull/160 for details).
         cache: false
     - name: Install golangci-lint
-      uses: golangci/golangci-lint-action@v9
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
       with:
         version: v2.10
         # We don't need to run golangci-lint here yet, but
@@ -80,7 +80,7 @@ jobs:
         uname -a
         make test
     - name: Send to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}  # used to upload coverage reports: https://github.com/moby/buildkit/pull/4660#issue-2142122533
 
@@ -88,6 +88,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10 # guardrails timeout for the whole job
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     - run: pip install --break-system-packages codespell==v2.3.0
     - run: codespell
