@@ -439,18 +439,47 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 	return user, nil
 }
 
+// groupArg is a parsed group argument for [GetAdditionalGroups].
+type groupArg struct {
+	name      string
+	gid       int
+	isNumeric bool
+}
+
+// matches reports whether group g satisfies the argument. Numeric arguments
+// are matched by GID only, others by name.
+func (ag groupArg) matches(g Group) bool {
+	if ag.isNumeric {
+		return g.Gid == ag.gid
+	}
+	return g.Name == ag.name
+}
+
 // GetAdditionalGroups looks up a list of groups by name or group id
 // against the given /etc/group formatted data. If a group name cannot
 // be found, an error will be returned. If a group id cannot be found,
 // or the given group data is nil, the id will be returned as-is
 // provided it is in the legal range.
 func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, error) {
+	addtlGroups := make([]groupArg, len(additionalGroups))
+	for i, ag := range additionalGroups {
+		gid, ok, err := parseNumeric(ag)
+		if err != nil {
+			return nil, err
+		}
+		addtlGroups[i] = groupArg{
+			name:      ag,
+			gid:       gid,
+			isNumeric: ok,
+		}
+	}
+
 	groups := []Group{}
 	if group != nil {
 		var err error
 		groups, err = ParseGroupFilter(group, func(g Group) bool {
-			for _, ag := range additionalGroups {
-				if g.Name == ag || strconv.Itoa(g.Gid) == ag {
+			for _, ag := range addtlGroups {
+				if ag.matches(g) {
 					return true
 				}
 			}
@@ -462,32 +491,28 @@ func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, err
 	}
 
 	gidMap := make(map[int]struct{})
-	for _, ag := range additionalGroups {
+	for _, ag := range addtlGroups {
 		var found bool
 		for _, g := range groups {
-			// if we found a matched group either by name or gid, take the
-			// first matched as correct
-			if g.Name == ag || strconv.Itoa(g.Gid) == ag {
-				if _, ok := gidMap[g.Gid]; !ok {
-					gidMap[g.Gid] = struct{}{}
-					found = true
-					break
+			if ag.matches(g) {
+				// take the first matched group as correct
+				if g.Gid < minID || g.Gid > maxID {
+					return nil, ErrRange
 				}
+				gidMap[g.Gid] = struct{}{}
+				found = true
+				break
 			}
 		}
-		// we asked for a group but didn't find it. let's check to see
-		// if we wanted a numeric group
+		// We asked for a group but didn't find it. Numeric group IDs may be
+		// used as-is even when they are not present in /etc/group; non-numeric
+		// group names must be found.
 		if !found {
-			gid, err := strconv.ParseInt(ag, 10, 64)
-			if err != nil {
+			if !ag.isNumeric {
 				// Not a numeric ID either.
-				return nil, fmt.Errorf("unable to find group %s: %w", ag, ErrNoGroupEntries)
+				return nil, fmt.Errorf("unable to find group %s: %w", ag.name, ErrNoGroupEntries)
 			}
-			// Ensure gid is inside gid range.
-			if gid < minID || gid > maxID {
-				return nil, ErrRange
-			}
-			gidMap[int(gid)] = struct{}{}
+			gidMap[ag.gid] = struct{}{}
 		}
 	}
 	gids := []int{}

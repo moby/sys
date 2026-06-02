@@ -461,6 +461,9 @@ root:x:0:root
 adm:x:43:
 grp:x:1234:root,adm
 adm:x:4343:root,adm-duplicate
+2147483648:x:0:
+9223372036854775808:x:0:
+toolarge:x:2147483648:
 this is just some garbage data
 ` + largeGroup()
 	tests := []foo{
@@ -473,6 +476,11 @@ this is just some garbage data
 			// single group
 			groups:   []string{"adm"},
 			expected: []int{43},
+		},
+		{
+			// numeric group miss must continue checking remaining groups
+			groups:   []string{"10001", "adm"},
+			expected: []int{43, 10001},
 		},
 		{
 			// multiple groups
@@ -516,6 +524,24 @@ this is just some garbage data
 			// group with very long list of users
 			groups:   []string{"largegroup"},
 			expected: []int{1000},
+		},
+		{
+			// numeric group must not resolve as group name
+			groups:   []string{"2147483648"},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			// numeric group must not resolve as group name
+			groups:   []string{"9223372036854775808"},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			// group entry with out-of-range gid
+			groups:   []string{"toolarge"},
+			expected: nil,
+			hasError: true,
 		},
 	}
 
