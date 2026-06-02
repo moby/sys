@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestUserParseLine(t *testing.T) {
+func TestParseLine(t *testing.T) {
 	var (
 		a, b string
 		c    []string
@@ -58,7 +58,7 @@ func TestUserParseLine(t *testing.T) {
 	}
 }
 
-func TestUserParsePasswd(t *testing.T) {
+func TestParsePasswdFilter(t *testing.T) {
 	users, err := ParsePasswdFilter(strings.NewReader(`
 root:x:0:0:root:/root:/bin/bash
 adm:x:3:4:adm:/var/adm:/bin/false
@@ -78,7 +78,7 @@ this is just some garbage data
 	}
 }
 
-func TestUserParseGroup(t *testing.T) {
+func TestParseGroupFilter(t *testing.T) {
 	groups, err := ParseGroupFilter(strings.NewReader(`
 root:x:0:root
 adm:x:4:root,adm,daemon
@@ -98,7 +98,7 @@ this is just some garbage data
 	}
 }
 
-func TestValidGetExecUser(t *testing.T) {
+func TestGetExecUser(t *testing.T) {
 	const passwdContent = `
 root:x:0:0:root user:/root:/bin/bash
 adm:x:42:43:adm:/var/adm:/bin/false
@@ -252,7 +252,7 @@ this is just some garbage data
 	}
 }
 
-func TestInvalidGetExecUser(t *testing.T) {
+func TestGetExecUserInvalid(t *testing.T) {
 	const passwdContent = `
 root:x:0:0:root user:/root:/bin/bash
 adm:x:42:43:adm:/var/adm:/bin/false
