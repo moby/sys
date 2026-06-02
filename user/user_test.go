@@ -231,24 +231,27 @@ this is just some garbage data
 		},
 	}
 
-	for _, test := range tests {
-		passwd := strings.NewReader(passwdContent)
-		group := strings.NewReader(groupContent)
-
-		execUser, err := GetExecUser(test.ref, &defaultExecUser, passwd, group)
-		if err != nil {
-			t.Logf("got unexpected error when parsing '%s': %s", test.ref, err.Error())
-			t.Fail()
-			continue
+	for _, tc := range tests {
+		name := tc.ref
+		if name == "" {
+			name = "<empty>"
 		}
+		t.Run(name, func(t *testing.T) {
+			passwd := strings.NewReader(passwdContent)
+			group := strings.NewReader(groupContent)
 
-		if !reflect.DeepEqual(test.expected, *execUser) {
-			t.Logf("ref:      %v", test.ref)
-			t.Logf("got:      %#v", execUser)
-			t.Logf("expected: %#v", test.expected)
-			t.Fail()
-			continue
-		}
+			execUser, err := GetExecUser(tc.ref, &defaultExecUser, passwd, group)
+			if err != nil {
+				t.Fatalf("got unexpected error when parsing '%s': %s", tc.ref, err.Error())
+			}
+
+			if !reflect.DeepEqual(tc.expected, *execUser) {
+				t.Logf("ref:      %v", tc.ref)
+				t.Logf("got:      %#v", execUser)
+				t.Logf("expected: %#v", tc.expected)
+				t.Fail()
+			}
+		})
 	}
 }
 
@@ -283,16 +286,16 @@ this is just some garbage data
 		"-43",
 	}
 
-	for _, test := range tests {
-		passwd := strings.NewReader(passwdContent)
-		group := strings.NewReader(groupContent)
+	for _, tc := range tests {
+		t.Run(tc, func(t *testing.T) {
+			passwd := strings.NewReader(passwdContent)
+			group := strings.NewReader(groupContent)
 
-		execUser, err := GetExecUser(test, nil, passwd, group)
-		if err == nil {
-			t.Logf("got unexpected success when parsing '%s': %#v", test, execUser)
-			t.Fail()
-			continue
-		}
+			execUser, err := GetExecUser(tc, nil, passwd, group)
+			if err == nil {
+				t.Fatalf("got unexpected success when parsing '%s': %#v", tc, execUser)
+			}
+		})
 	}
 }
 
@@ -367,30 +370,33 @@ this is just some garbage data
 		},
 	}
 
-	for _, test := range tests {
-		var passwd, group io.Reader
-
-		if test.passwd {
-			passwd = strings.NewReader(passwdContent)
+	for _, tc := range tests {
+		name := tc.ref
+		if name == "" {
+			name = "<empty>"
 		}
+		t.Run(name, func(t *testing.T) {
+			var passwd, group io.Reader
 
-		if test.group {
-			group = strings.NewReader(groupContent)
-		}
+			if tc.passwd {
+				passwd = strings.NewReader(passwdContent)
+			}
 
-		execUser, err := GetExecUser(test.ref, &defaultExecUser, passwd, group)
-		if err != nil {
-			t.Logf("got unexpected error when parsing '%s': %s", test.ref, err.Error())
-			t.Fail()
-			continue
-		}
+			if tc.group {
+				group = strings.NewReader(groupContent)
+			}
 
-		if !reflect.DeepEqual(test.expected, *execUser) {
-			t.Logf("got:      %#v", execUser)
-			t.Logf("expected: %#v", test.expected)
-			t.Fail()
-			continue
-		}
+			execUser, err := GetExecUser(tc.ref, &defaultExecUser, passwd, group)
+			if err != nil {
+				t.Fatalf("got unexpected error when parsing '%s': %s", tc.ref, err.Error())
+			}
+
+			if !reflect.DeepEqual(tc.expected, *execUser) {
+				t.Logf("got:      %#v", execUser)
+				t.Logf("expected: %#v", tc.expected)
+				t.Fail()
+			}
+		})
 	}
 }
 
@@ -464,22 +470,23 @@ this is just some garbage data
 		},
 	}
 
-	for _, test := range tests {
-		group := strings.NewReader(groupContent)
+	for _, tc := range tests {
+		name := strings.Join(tc.groups, ",")
+		t.Run(name, func(t *testing.T) {
+			group := strings.NewReader(groupContent)
 
-		gids, err := GetAdditionalGroups(test.groups, group)
-		if test.hasError && err == nil {
-			t.Errorf("Parse(%#v) expects error but has none", test)
-			continue
-		}
-		if !test.hasError && err != nil {
-			t.Errorf("Parse(%#v) has error %v", test, err)
-			continue
-		}
-		sort.Ints(gids)
-		if !reflect.DeepEqual(gids, test.expected) {
-			t.Errorf("Gids(%v), expect %v from groups %v", gids, test.expected, test.groups)
-		}
+			gids, err := GetAdditionalGroups(tc.groups, group)
+			if tc.hasError && err == nil {
+				t.Fatalf("Parse(%#v) expects error but has none", tc)
+			}
+			if !tc.hasError && err != nil {
+				t.Fatalf("Parse(%#v) has error %v", tc, err)
+			}
+			sort.Ints(gids)
+			if !reflect.DeepEqual(gids, tc.expected) {
+				t.Errorf("Gids(%v), expect %v from groups %v", gids, tc.expected, tc.groups)
+			}
+		})
 	}
 }
 
@@ -502,20 +509,21 @@ func TestGetAdditionalGroupsNumeric(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		gids, err := GetAdditionalGroups(test.groups, nil)
-		if test.hasError && err == nil {
-			t.Errorf("Parse(%#v) expects error but has none", test)
-			continue
-		}
-		if !test.hasError && err != nil {
-			t.Errorf("Parse(%#v) has error %v", test, err)
-			continue
-		}
-		sort.Ints(gids)
-		if !reflect.DeepEqual(gids, test.expected) {
-			t.Errorf("Gids(%v), expect %v from groups %v", gids, test.expected, test.groups)
-		}
+	for _, tc := range tests {
+		name := strings.Join(tc.groups, ",")
+		t.Run(name, func(t *testing.T) {
+			gids, err := GetAdditionalGroups(tc.groups, nil)
+			if tc.hasError && err == nil {
+				t.Fatalf("Parse(%#v) expects error but has none", tc)
+			}
+			if !tc.hasError && err != nil {
+				t.Fatalf("Parse(%#v) has error %v", tc, err)
+			}
+			sort.Ints(gids)
+			if !reflect.DeepEqual(gids, tc.expected) {
+				t.Errorf("Gids(%v), expect %v from groups %v", gids, tc.expected, tc.groups)
+			}
+		})
 	}
 }
 
@@ -524,7 +532,7 @@ func largeGroup() (res string) {
 	var b strings.Builder
 	b.WriteString("largegroup:x:1000:user1")
 	for i := 2; i <= 7500; i++ {
-		fmt.Fprintf(&b, ",user%d", i)
+		_, _ = fmt.Fprintf(&b, ",user%d", i)
 	}
 	return b.String()
 }
