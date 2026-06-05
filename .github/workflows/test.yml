@@ -54,13 +54,20 @@ jobs:
         packages=""
         for p in */; do
           [ -f "$p/go.mod" ] || continue
-          if ! (cd "$p" && go list -m -f "{{if gt .GoVersion \"$go_version\"}}ko{{end}}" | grep -q ko); then
-            packages+="${p%/} "
-          else
+          if (cd "$p" && go list -m -f "{{if gt .GoVersion \"$go_version\"}}ko{{end}}" 2>/dev/null | grep -q ko); then
             echo "::notice::SKIP: github.com/moby/sys/${p%/} requires a more recent version of Go"
+          elif ! (cd "$p" && go list -m >/dev/null 2>&1); then
+            echo "::notice::SKIP: github.com/moby/sys/${p%/} is not supported by Go ${go_version}"
+          else
+            packages+="${p%/} "
           fi
         done
         
+        if [ -z "$packages" ]; then
+          echo "::error::No packages are supported by Go ${go_version}"
+          exit 1
+        fi
+
         echo "PACKAGES=${packages}" >> "$GITHUB_ENV"
     - name: go mod tidy
       run: |
