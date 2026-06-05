@@ -37,7 +37,7 @@ test: foreach
 .PHONY: test-local
 test-local: MOD = -modfile=go-local.mod
 test-local:
-	@if printf '%s\n' $(PACKAGES) | grep -qx mount && \
+	@set -eu; if printf '%s\n' $(PACKAGES) | grep -qx mount && \
 		printf '%s\n' $(PACKAGES) | grep -qx mountinfo; then \
 		echo 'replace github.com/moby/sys/mountinfo => ../mountinfo' | cat mount/go.mod - > mount/go-local.mod; \
 		cd mount && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .; \
@@ -45,7 +45,7 @@ test-local:
 	else \
 		echo "SKIP: mount local dependency test requires mount and mountinfo"; \
 	fi
-	@if printf '%s\n' $(PACKAGES) | grep -qx atomicwriter && \
+	@set -eu; if printf '%s\n' $(PACKAGES) | grep -qx atomicwriter && \
 		printf '%s\n' $(PACKAGES) | grep -qx sequential; then \
 		echo 'replace github.com/moby/sys/sequential => ../sequential' | cat atomicwriter/go.mod - > atomicwriter/go-local.mod; \
 		cd atomicwriter && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .; \
