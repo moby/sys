@@ -1,6 +1,9 @@
 # Default
-* text=auto
+* text=auto eol=lf
 
 # Go files should always have UNIX-style line endings
 # (see e.g. https://github.com/golang/go/issues/16355)
 *.go	text eol=lf
+*.md	text eol=lf
+go.mod	text eol=lf
+go.sum	text eol=lf
