@@ -10,20 +10,26 @@ import (
 )
 
 func init() {
-	reexec.Register("example-child", func() {
+	reexec.RegisterContext("example-child", func(context.Context) error {
 		fmt.Println("Hello from example-child entrypoint")
+		return nil
 	})
 }
 
 // Example_programmatic demonstrates using reexec to programmatically
 // re-execute the current binary.
 func Example_programmatic() {
-	if reexec.Init() {
-		// Matched a reexec entrypoint; stop normal main execution.
+	ctx := context.Background()
+	if ok, err := reexec.Dispatch(ctx); ok {
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "entrypoint failed:", err)
+			os.Exit(1)
+		}
+		// Matched a reexec entrypoint; stop normal execution.
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	cmd := reexec.CommandContext(ctx, "example-child")
