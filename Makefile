@@ -37,14 +37,22 @@ test: foreach
 .PHONY: test-local
 test-local: MOD = -modfile=go-local.mod
 test-local:
-	echo 'replace github.com/moby/sys/mountinfo => ../mountinfo' | cat mount/go.mod - > mount/go-local.mod
-	# Run go mod tidy to make sure mountinfo dependency versions are met.
-	cd mount && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .
-	$(RM) mount/go-local.*
-	echo 'replace github.com/moby/sys/sequential => ../sequential' | cat atomicwriter/go.mod - > atomicwriter/go-local.mod
-	# Run go mod tidy to make sure sequential dependency versions are met.
-	cd atomicwriter && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .
-	$(RM) atomicwriter/go-local.*
+	@if printf '%s\n' $(PACKAGES) | grep -qx mount && \
+		printf '%s\n' $(PACKAGES) | grep -qx mountinfo; then \
+		echo 'replace github.com/moby/sys/mountinfo => ../mountinfo' | cat mount/go.mod - > mount/go-local.mod; \
+		cd mount && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .; \
+		$(RM) mount/go-local.*; \
+	else \
+		echo "SKIP: mount local dependency test requires mount and mountinfo"; \
+	fi
+	@if printf '%s\n' $(PACKAGES) | grep -qx atomicwriter && \
+		printf '%s\n' $(PACKAGES) | grep -qx sequential; then \
+		echo 'replace github.com/moby/sys/sequential => ../sequential' | cat atomicwriter/go.mod - > atomicwriter/go-local.mod; \
+		cd atomicwriter && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .; \
+		$(RM) atomicwriter/go-local.*; \
+	else \
+		echo "SKIP: atomicwriter local dependency test requires atomicwriter and sequential"; \
+	fi
 
 .PHONY: golangci-lint-version
 golangci-lint-version:
