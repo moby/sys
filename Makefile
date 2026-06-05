@@ -39,11 +39,11 @@ test-local: MOD = -modfile=go-local.mod
 test-local:
 	echo 'replace github.com/moby/sys/mountinfo => ../mountinfo' | cat mount/go.mod - > mount/go-local.mod
 	# Run go mod tidy to make sure mountinfo dependency versions are met.
-	cd mount && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .
+	go -C mount mod tidy $(MOD) && go -C mount test $(MOD) $(RUN_VIA_SUDO) -v .
 	$(RM) mount/go-local.*
 	echo 'replace github.com/moby/sys/sequential => ../sequential' | cat atomicwriter/go.mod - > atomicwriter/go-local.mod
 	# Run go mod tidy to make sure sequential dependency versions are met.
-	cd atomicwriter && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .
+	go -C atomicwriter mod tidy $(MOD) && go -C atomicwriter test $(MOD) $(RUN_VIA_SUDO) -v .
 	$(RM) atomicwriter/go-local.*
 
 .PHONY: golangci-lint-version
@@ -62,6 +62,6 @@ cross:
 		export GOOS=$${osarch%/*} GOARCH=$${osarch#*/}; \
 		echo "# building for $$GOOS/$$GOARCH"; \
 		for p in $(PACKAGES); do \
-			(cd $$p; go build .); \
+			go -C $$p build .; \
 		done; \
 	done

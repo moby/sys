@@ -54,7 +54,7 @@ jobs:
         packages=""
         for p in */; do
           [ -f "$p/go.mod" ] || continue
-          if ! (cd "$p" && go list -m -f "{{if gt .GoVersion \"$go_version\"}}ko{{end}}" | grep -q ko); then
+          if ! (go -C "$p" list -m -f "{{if gt .GoVersion \"$go_version\"}}ko{{end}}" | grep -q ko); then
             packages+="${p%/} "
           else
             echo "::notice::SKIP: github.com/moby/sys/${p%/} requires a more recent version of Go"
