@@ -26,11 +26,11 @@ type fileRenameInformationEx struct {
 	FileName       [1]uint16
 }
 
-// atomicwriterRenameAt renames oldpath to newpath using os.Rename. If it fails,
+// atomicwriterRename renames oldpath to newpath using os.Rename. If it fails,
 // it attempts to use NtSetInformationFile with FILE_RENAME_POSIX_SEMANTICS,
 // which allows atomic replacement of a file even when the destination
 // is open by another process.
-func atomicwriterRenameAt(oldpath, newpath string) error {
+func atomicwriterRename(oldpath, newpath string) error {
 
 	err := os.Rename(oldpath, newpath)
 	if err == nil {
