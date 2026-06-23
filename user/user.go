@@ -157,7 +157,7 @@ func ParseGroup(group io.Reader) ([]Group, error) {
 }
 
 func ParseGroupFileFilter(path string, filter func(Group) bool) ([]Group, error) {
-	group, err := os.Open(path)
+	group, err := openUserFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -246,12 +246,12 @@ type ExecUser struct {
 func GetExecUserPath(userSpec string, defaults *ExecUser, passwdPath, groupPath string) (*ExecUser, error) {
 	var passwd, group io.Reader
 
-	if passwdFile, err := os.Open(passwdPath); err == nil {
+	if passwdFile, err := openUserFile(passwdPath); err == nil {
 		passwd = passwdFile
 		defer passwdFile.Close()
 	}
 
-	if groupFile, err := os.Open(groupPath); err == nil {
+	if groupFile, err := openUserFile(groupPath); err == nil {
 		group = groupFile
 		defer groupFile.Close()
 	}
