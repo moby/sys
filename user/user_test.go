@@ -106,6 +106,7 @@ adm:x:42:43:adm:/var/adm:/bin/false
 odd:x:111:112::/home/odd:::::
 2147483647:x:0:0:maxint32:/root:/bin/bash
 2147483648:x:0:0:toolarge:/root:/bin/bash
+9223372036854775807:x:0:0:maxint64:/root:/bin/bash
 user7456:x:7456:100:Vasya:/home/user7456
 this is just some garbage data
 `
@@ -117,6 +118,7 @@ grp:x:1234:root,adm,user7456
 odd:x:444:
 2147483647:x:1235:
 2147483648:x:1236:
+9223372036854775807:x:1237:
 this is just some garbage data
 ` + largeGroup()
 
@@ -293,6 +295,8 @@ adm:x:42:43:adm:/var/adm:/bin/false
 -42:x:12:13:broken:/very/broken
 2147483647:x:0:0:maxint32:/root:/bin/bash
 2147483648:x:0:0:toolarge:/root:/bin/bash
+9223372036854775807:x:0:0:maxint64:/root:/bin/bash
+9223372036854775808:x:0:0:maxint64plusone:/root:/bin/bash
 this is just some garbage data
 `
 	const groupContent = `
@@ -301,6 +305,8 @@ adm:x:43:
 grp:x:1234:root,adm
 2147483647:x:1235:
 2147483648:x:1236:
+9223372036854775807:x:1237:
+9223372036854775808:x:1238:
 this is just some garbage data
 `
 
@@ -319,9 +325,14 @@ this is just some garbage data
 		"-5:-2",
 		"-42",
 		"-43",
-		"42:2147483648", // maxID + 1
-		"2147483648:43", // maxID + 1
-		"2147483648",    // maxID + 1
+		"42:2147483648",            // maxID + 1
+		"2147483648:43",            // maxID + 1
+		"2147483648",               // maxID + 1
+		"7456:9223372036854775807", // maxInt64
+		"9223372036854775807:43",   // maxInt64
+		"9223372036854775807",      // maxInt64
+		"9223372036854775808",      // maxInt64+1, must not resolve as username
+		"0:9223372036854775808",    // maxInt64+1, must not resolve as group name
 	}
 
 	for _, tc := range tests {
@@ -450,6 +461,9 @@ root:x:0:root
 adm:x:43:
 grp:x:1234:root,adm
 adm:x:4343:root,adm-duplicate
+2147483648:x:0:
+9223372036854775808:x:0:
+toolarge:x:2147483648:
 this is just some garbage data
 ` + largeGroup()
 	tests := []foo{
@@ -462,6 +476,11 @@ this is just some garbage data
 			// single group
 			groups:   []string{"adm"},
 			expected: []int{43},
+		},
+		{
+			// numeric group miss must continue checking remaining groups
+			groups:   []string{"10001", "adm"},
+			expected: []int{43, 10001},
 		},
 		{
 			// multiple groups
@@ -505,6 +524,24 @@ this is just some garbage data
 			// group with very long list of users
 			groups:   []string{"largegroup"},
 			expected: []int{1000},
+		},
+		{
+			// numeric group must not resolve as group name
+			groups:   []string{"2147483648"},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			// numeric group must not resolve as group name
+			groups:   []string{"9223372036854775808"},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			// group entry with out-of-range gid
+			groups:   []string{"toolarge"},
+			expected: nil,
+			hasError: true,
 		},
 	}
 
