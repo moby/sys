@@ -97,12 +97,7 @@ func parseParts(parts [][]byte, v ...any) {
 }
 
 func ParsePasswdFile(path string) ([]User, error) {
-	passwd, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer passwd.Close()
-	return ParsePasswd(passwd)
+	return ParsePasswdFileFilter(path, nil)
 }
 
 func ParsePasswd(passwd io.Reader) ([]User, error) {
@@ -154,13 +149,7 @@ func ParsePasswdFilter(r io.Reader, filter func(User) bool) ([]User, error) {
 }
 
 func ParseGroupFile(path string) ([]Group, error) {
-	group, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	defer group.Close()
-	return ParseGroup(group)
+	return ParseGroupFileFilter(path, nil)
 }
 
 func ParseGroup(group io.Reader) ([]Group, error) {
@@ -498,12 +487,7 @@ func GetAdditionalGroupsPath(additionalGroups []string, groupPath string) ([]int
 }
 
 func ParseSubIDFile(path string) ([]SubID, error) {
-	subid, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer subid.Close()
-	return ParseSubID(subid)
+	return ParseSubIDFileFilter(path, nil)
 }
 
 func ParseSubID(subid io.Reader) ([]SubID, error) {
@@ -551,12 +535,7 @@ func ParseSubIDFilter(r io.Reader, filter func(SubID) bool) ([]SubID, error) {
 }
 
 func ParseIDMapFile(path string) ([]IDMap, error) {
-	r, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	return ParseIDMap(r)
+	return ParseIDMapFileFilter(path, nil)
 }
 
 func ParseIDMap(r io.Reader) ([]IDMap, error) {
