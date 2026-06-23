@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestUserParseLine(t *testing.T) {
+func TestParseLine(t *testing.T) {
 	var (
 		a, b string
 		c    []string
@@ -58,7 +58,7 @@ func TestUserParseLine(t *testing.T) {
 	}
 }
 
-func TestUserParsePasswd(t *testing.T) {
+func TestParsePasswdFilter(t *testing.T) {
 	users, err := ParsePasswdFilter(strings.NewReader(`
 root:x:0:0:root:/root:/bin/bash
 adm:x:3:4:adm:/var/adm:/bin/false
@@ -78,7 +78,7 @@ this is just some garbage data
 	}
 }
 
-func TestUserParseGroup(t *testing.T) {
+func TestParseGroupFilter(t *testing.T) {
 	groups, err := ParseGroupFilter(strings.NewReader(`
 root:x:0:root
 adm:x:4:root,adm,daemon
@@ -98,12 +98,14 @@ this is just some garbage data
 	}
 }
 
-func TestValidGetExecUser(t *testing.T) {
+func TestGetExecUser(t *testing.T) {
 	const passwdContent = `
 root:x:0:0:root user:/root:/bin/bash
 adm:x:42:43:adm:/var/adm:/bin/false
 111:x:222:333::/var/garbage
 odd:x:111:112::/home/odd:::::
+2147483647:x:0:0:maxint32:/root:/bin/bash
+2147483648:x:0:0:toolarge:/root:/bin/bash
 user7456:x:7456:100:Vasya:/home/user7456
 this is just some garbage data
 `
@@ -113,6 +115,8 @@ adm:x:43:
 grp:x:1234:root,adm,user7456
 444:x:555:111
 odd:x:444:
+2147483647:x:1235:
+2147483648:x:1236:
 this is just some garbage data
 ` + largeGroup()
 
@@ -229,40 +233,74 @@ this is just some garbage data
 				Home:  "/home/user7456",
 			},
 		},
+		{
+			ref: "7456:2147483647",
+			expected: ExecUser{
+				Uid:   7456,
+				Gid:   2147483647, // maxID
+				Sgids: defaultExecUser.Sgids,
+				Home:  "/home/user7456",
+			},
+		},
+		{
+			ref: "2147483647:43",
+			expected: ExecUser{
+				Uid:   2147483647, // maxID
+				Gid:   43,
+				Sgids: defaultExecUser.Sgids,
+				Home:  defaultExecUser.Home,
+			},
+		},
+		{
+			ref: "2147483647",
+			expected: ExecUser{
+				Uid:   2147483647, // maxID
+				Gid:   defaultExecUser.Gid,
+				Sgids: defaultExecUser.Sgids,
+				Home:  defaultExecUser.Home,
+			},
+		},
 	}
 
-	for _, test := range tests {
-		passwd := strings.NewReader(passwdContent)
-		group := strings.NewReader(groupContent)
-
-		execUser, err := GetExecUser(test.ref, &defaultExecUser, passwd, group)
-		if err != nil {
-			t.Logf("got unexpected error when parsing '%s': %s", test.ref, err.Error())
-			t.Fail()
-			continue
+	for _, tc := range tests {
+		name := tc.ref
+		if name == "" {
+			name = "<empty>"
 		}
+		t.Run(name, func(t *testing.T) {
+			passwd := strings.NewReader(passwdContent)
+			group := strings.NewReader(groupContent)
 
-		if !reflect.DeepEqual(test.expected, *execUser) {
-			t.Logf("ref:      %v", test.ref)
-			t.Logf("got:      %#v", execUser)
-			t.Logf("expected: %#v", test.expected)
-			t.Fail()
-			continue
-		}
+			execUser, err := GetExecUser(tc.ref, &defaultExecUser, passwd, group)
+			if err != nil {
+				t.Fatalf("got unexpected error when parsing '%s': %s", tc.ref, err.Error())
+			}
+
+			if !reflect.DeepEqual(tc.expected, *execUser) {
+				t.Logf("ref:      %v", tc.ref)
+				t.Logf("got:      %#v", execUser)
+				t.Logf("expected: %#v", tc.expected)
+				t.Fail()
+			}
+		})
 	}
 }
 
-func TestInvalidGetExecUser(t *testing.T) {
+func TestGetExecUserInvalid(t *testing.T) {
 	const passwdContent = `
 root:x:0:0:root user:/root:/bin/bash
 adm:x:42:43:adm:/var/adm:/bin/false
 -42:x:12:13:broken:/very/broken
+2147483647:x:0:0:maxint32:/root:/bin/bash
+2147483648:x:0:0:toolarge:/root:/bin/bash
 this is just some garbage data
 `
 	const groupContent = `
 root:x:0:root
 adm:x:43:
 grp:x:1234:root,adm
+2147483647:x:1235:
+2147483648:x:1236:
 this is just some garbage data
 `
 
@@ -281,18 +319,21 @@ this is just some garbage data
 		"-5:-2",
 		"-42",
 		"-43",
+		"42:2147483648", // maxID + 1
+		"2147483648:43", // maxID + 1
+		"2147483648",    // maxID + 1
 	}
 
-	for _, test := range tests {
-		passwd := strings.NewReader(passwdContent)
-		group := strings.NewReader(groupContent)
+	for _, tc := range tests {
+		t.Run(tc, func(t *testing.T) {
+			passwd := strings.NewReader(passwdContent)
+			group := strings.NewReader(groupContent)
 
-		execUser, err := GetExecUser(test, nil, passwd, group)
-		if err == nil {
-			t.Logf("got unexpected success when parsing '%s': %#v", test, execUser)
-			t.Fail()
-			continue
-		}
+			execUser, err := GetExecUser(tc, nil, passwd, group)
+			if err == nil {
+				t.Fatalf("got unexpected success when parsing '%s': %#v", tc, execUser)
+			}
+		})
 	}
 }
 
@@ -367,30 +408,33 @@ this is just some garbage data
 		},
 	}
 
-	for _, test := range tests {
-		var passwd, group io.Reader
-
-		if test.passwd {
-			passwd = strings.NewReader(passwdContent)
+	for _, tc := range tests {
+		name := tc.ref
+		if name == "" {
+			name = "<empty>"
 		}
+		t.Run(name, func(t *testing.T) {
+			var passwd, group io.Reader
 
-		if test.group {
-			group = strings.NewReader(groupContent)
-		}
+			if tc.passwd {
+				passwd = strings.NewReader(passwdContent)
+			}
 
-		execUser, err := GetExecUser(test.ref, &defaultExecUser, passwd, group)
-		if err != nil {
-			t.Logf("got unexpected error when parsing '%s': %s", test.ref, err.Error())
-			t.Fail()
-			continue
-		}
+			if tc.group {
+				group = strings.NewReader(groupContent)
+			}
 
-		if !reflect.DeepEqual(test.expected, *execUser) {
-			t.Logf("got:      %#v", execUser)
-			t.Logf("expected: %#v", test.expected)
-			t.Fail()
-			continue
-		}
+			execUser, err := GetExecUser(tc.ref, &defaultExecUser, passwd, group)
+			if err != nil {
+				t.Fatalf("got unexpected error when parsing '%s': %s", tc.ref, err.Error())
+			}
+
+			if !reflect.DeepEqual(tc.expected, *execUser) {
+				t.Logf("got:      %#v", execUser)
+				t.Logf("expected: %#v", tc.expected)
+				t.Fail()
+			}
+		})
 	}
 }
 
@@ -464,22 +508,23 @@ this is just some garbage data
 		},
 	}
 
-	for _, test := range tests {
-		group := strings.NewReader(groupContent)
+	for _, tc := range tests {
+		name := strings.Join(tc.groups, ",")
+		t.Run(name, func(t *testing.T) {
+			group := strings.NewReader(groupContent)
 
-		gids, err := GetAdditionalGroups(test.groups, group)
-		if test.hasError && err == nil {
-			t.Errorf("Parse(%#v) expects error but has none", test)
-			continue
-		}
-		if !test.hasError && err != nil {
-			t.Errorf("Parse(%#v) has error %v", test, err)
-			continue
-		}
-		sort.Ints(gids)
-		if !reflect.DeepEqual(gids, test.expected) {
-			t.Errorf("Gids(%v), expect %v from groups %v", gids, test.expected, test.groups)
-		}
+			gids, err := GetAdditionalGroups(tc.groups, group)
+			if tc.hasError && err == nil {
+				t.Fatalf("Parse(%#v) expects error but has none", tc)
+			}
+			if !tc.hasError && err != nil {
+				t.Fatalf("Parse(%#v) has error %v", tc, err)
+			}
+			sort.Ints(gids)
+			if !reflect.DeepEqual(gids, tc.expected) {
+				t.Errorf("Gids(%v), expect %v from groups %v", gids, tc.expected, tc.groups)
+			}
+		})
 	}
 }
 
@@ -502,20 +547,21 @@ func TestGetAdditionalGroupsNumeric(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		gids, err := GetAdditionalGroups(test.groups, nil)
-		if test.hasError && err == nil {
-			t.Errorf("Parse(%#v) expects error but has none", test)
-			continue
-		}
-		if !test.hasError && err != nil {
-			t.Errorf("Parse(%#v) has error %v", test, err)
-			continue
-		}
-		sort.Ints(gids)
-		if !reflect.DeepEqual(gids, test.expected) {
-			t.Errorf("Gids(%v), expect %v from groups %v", gids, test.expected, test.groups)
-		}
+	for _, tc := range tests {
+		name := strings.Join(tc.groups, ",")
+		t.Run(name, func(t *testing.T) {
+			gids, err := GetAdditionalGroups(tc.groups, nil)
+			if tc.hasError && err == nil {
+				t.Fatalf("Parse(%#v) expects error but has none", tc)
+			}
+			if !tc.hasError && err != nil {
+				t.Fatalf("Parse(%#v) has error %v", tc, err)
+			}
+			sort.Ints(gids)
+			if !reflect.DeepEqual(gids, tc.expected) {
+				t.Errorf("Gids(%v), expect %v from groups %v", gids, tc.expected, tc.groups)
+			}
+		})
 	}
 }
 
@@ -524,7 +570,7 @@ func largeGroup() (res string) {
 	var b strings.Builder
 	b.WriteString("largegroup:x:1000:user1")
 	for i := 2; i <= 7500; i++ {
-		fmt.Fprintf(&b, ",user%d", i)
+		_, _ = fmt.Fprintf(&b, ",user%d", i)
 	}
 	return b.String()
 }
