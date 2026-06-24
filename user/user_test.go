@@ -175,6 +175,18 @@ func TestTestParseGroupFileCapsReadsonRegularFile(t *testing.T) {
 	}
 }
 
+func TestParseGroupFilterDevZero(t *testing.T) {
+	dn, err := os.Open("/dev/zero")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const expErr = "bufio.Scanner: token too long"
+	_, err = ParseGroupFilter(dn, nil)
+	if err == nil || !strings.Contains(err.Error(), expErr) {
+		t.Fatalf("want %q, got %v", expErr, err)
+	}
+}
+
 func TestGetExecUser(t *testing.T) {
 	const passwdContent = `
 root:x:0:0:root user:/root:/bin/bash
