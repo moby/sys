@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -133,7 +132,13 @@ func TestParseGroupFileCapsReads(t *testing.T) {
 			tmpDir := t.TempDir()
 			fileName := filepath.Join(tmpDir, "etc-group")
 
-			data := append(bytes.Repeat([]byte{0}, tc.padBytes), beyond...)
+			pattern := []byte("# padding\n")
+			pad := bytes.Repeat(pattern, (tc.padBytes+len(pattern)-1)/len(pattern))[:tc.padBytes]
+			if len(pad) > 0 && pad[len(pad)-1] != '\n' {
+				pad[len(pad)-1] = '\n'
+			}
+
+			data := append(pad, beyond...)
 			err := os.WriteFile(fileName, data, 0o644)
 			if err != nil {
 				t.Fatal(err)
@@ -155,7 +160,7 @@ func TestParseGroupFileCapsReads(t *testing.T) {
 			for _, g := range gids {
 				haveGids = append(haveGids, g.Gid)
 			}
-			if !slices.Equal(haveGids, tc.expGIDs) {
+			if !reflect.DeepEqual(haveGids, tc.expGIDs) {
 				t.Fatalf("unexpected gids: got %v, want %v", gids, tc.expGIDs)
 			}
 		})
