@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -181,6 +182,9 @@ func TestTestParseGroupFileCapsReadsonRegularFile(t *testing.T) {
 }
 
 func TestParseGroupFilterDevZero(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("depends on /dev/zero")
+	}
 	dn, err := os.Open("/dev/zero")
 	if err != nil {
 		t.Fatal(err)
