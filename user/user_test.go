@@ -1,9 +1,13 @@
 package user
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -95,6 +99,91 @@ this is just some garbage data
 	}
 	if groups[1].Gid != 4 || groups[1].Name != "adm" || len(groups[1].List) != 3 {
 		t.Fatalf("Expected groups[1] to be 4 - adm - 3 members, got %v - %v - %v", groups[1].Gid, groups[1].Name, len(groups[1].List))
+	}
+}
+
+// TestParseGroupFileCapsReads asserts the boundary behavior of the read cap:
+// well below, ending exactly at, and past maxUserFileBytes.
+func TestParseGroupFileCapsReads(t *testing.T) {
+	beyond := []byte("\nbeyond:x:42:\n")
+
+	for _, tc := range []struct {
+		name     string
+		padBytes int
+		expGIDs  []int
+		expErr   string
+	}{
+		{
+			name:     "pad below cap, beyond is parsed",
+			padBytes: 100,
+			expGIDs:  []int{42},
+		},
+		{
+			name:     "beyond ends exactly at cap, is parsed",
+			padBytes: maxUserFileBytes - len(beyond),
+			expGIDs:  []int{42},
+		},
+		{
+			name:     "pad past cap, read errors out",
+			padBytes: maxUserFileBytes,
+			expErr:   "file exceeds",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			fileName := filepath.Join(tmpDir, "etc-group")
+
+			data := append(bytes.Repeat([]byte{0}, tc.padBytes), beyond...)
+			err := os.WriteFile(fileName, data, 0o644)
+			if err != nil {
+				t.Fatal(err)
+			}
+			gids, err := ParseGroupFile(fileName)
+			if tc.expErr != "" {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if !strings.Contains(err.Error(), tc.expErr) {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			haveGids := make([]int, 0, len(gids))
+			for _, g := range gids {
+				haveGids = append(haveGids, g.Gid)
+			}
+			if !slices.Equal(haveGids, tc.expGIDs) {
+				t.Fatalf("unexpected gids: got %v, want %v", gids, tc.expGIDs)
+			}
+		})
+	}
+}
+
+// TestTestParseGroupFileCapsReadsonRegularFile verifies that non-regular files
+// are refused.
+func TestTestParseGroupFileCapsReadsonRegularFile(t *testing.T) {
+	fileName := t.TempDir()
+	_, err := ParseGroupFile(fileName)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "not a regular file") {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
+
+func TestParseGroupFilterDevZero(t *testing.T) {
+	dn, err := os.Open("/dev/zero")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const expErr = "bufio.Scanner: token too long"
+	_, err = ParseGroupFilter(dn, nil)
+	if err == nil || !strings.Contains(err.Error(), expErr) {
+		t.Fatalf("want %q, got %v", expErr, err)
 	}
 }
 

@@ -157,7 +157,7 @@ func ParseGroup(group io.Reader) ([]Group, error) {
 }
 
 func ParseGroupFileFilter(path string, filter func(Group) bool) ([]Group, error) {
-	group, err := os.Open(path)
+	group, err := openUserFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -169,52 +169,22 @@ func ParseGroupFilter(r io.Reader, filter func(Group) bool) ([]Group, error) {
 	if r == nil {
 		return nil, errors.New("nil source for group-formatted data")
 	}
-	rd := bufio.NewReader(r)
-	out := []Group{}
 
-	// Read the file line-by-line.
-	for {
-		var (
-			isPrefix  bool
-			wholeLine []byte
-			err       error
-		)
+	var (
+		s   = bufio.NewScanner(r)
+		out = []Group{}
+	)
 
-		// Read the next line. We do so in chunks (as much as reader's
-		// buffer is able to keep), check if we read enough columns
-		// already on each step and store final result in wholeLine.
-		for {
-			var line []byte
-			line, isPrefix, err = rd.ReadLine()
-			if err != nil {
-				// We should return no error if EOF is reached
-				// without a match.
-				if err == io.EOF {
-					err = nil
-				}
-				return out, err
-			}
+	// A group's user_list may be arbitrarily long, so allow lines that are
+	// much larger than bufio.Scanner's default maximum token size (64 KiB).
+	s.Buffer(nil, 1024*1024)
 
-			// Simple common case: line is short enough to fit in a
-			// single reader's buffer.
-			if !isPrefix && len(wholeLine) == 0 {
-				wholeLine = line
-				break
-			}
-
-			wholeLine = append(wholeLine, line...)
-
-			// Check if we read the whole line already.
-			if !isPrefix {
-				break
-			}
-		}
-
+	for s.Scan() {
 		// There's no spec for /etc/passwd or /etc/group, but we try to follow
 		// the same rules as the glibc parser, which allows comments and blank
 		// space at the beginning of a line.
-		wholeLine = bytes.TrimSpace(wholeLine)
-		if len(wholeLine) == 0 || wholeLine[0] == '#' {
+		line := bytes.TrimSpace(s.Bytes())
+		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
 
@@ -224,12 +194,17 @@ func ParseGroupFilter(r io.Reader, filter func(Group) bool) ([]Group, error) {
 		//  root:x:0:root
 		//  adm:x:4:root,adm,daemon
 		p := Group{}
-		parseLine(wholeLine, &p.Name, &p.Pass, &p.Gid, &p.List)
+		parseLine(line, &p.Name, &p.Pass, &p.Gid, &p.List)
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
 		}
 	}
+	if err := s.Err(); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 type ExecUser struct {
@@ -246,12 +221,12 @@ type ExecUser struct {
 func GetExecUserPath(userSpec string, defaults *ExecUser, passwdPath, groupPath string) (*ExecUser, error) {
 	var passwd, group io.Reader
 
-	if passwdFile, err := os.Open(passwdPath); err == nil {
+	if passwdFile, err := openUserFile(passwdPath); err == nil {
 		passwd = passwdFile
 		defer passwdFile.Close()
 	}
 
-	if groupFile, err := os.Open(groupPath); err == nil {
+	if groupFile, err := openUserFile(groupPath); err == nil {
 		group = groupFile
 		defer groupFile.Close()
 	}
