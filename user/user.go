@@ -408,22 +408,6 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 	return user, nil
 }
 
-// groupArg is a parsed group argument for [GetAdditionalGroups].
-type groupArg struct {
-	name      string
-	gid       int
-	isNumeric bool
-}
-
-// matches reports whether group g satisfies the argument. Numeric arguments
-// are matched by GID only, others by name.
-func (ag groupArg) matches(g Group) bool {
-	if ag.isNumeric {
-		return g.Gid == ag.gid
-	}
-	return g.Name == ag.name
-}
-
 // GetAdditionalGroups looks up a list of groups by name or group id
 // against the given /etc/group formatted data. If a group name cannot
 // be found, an error will be returned. If a group id cannot be found,
