@@ -296,13 +296,8 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 	user := &ExecUser{
 		Uid:   defaults.Uid,
 		Gid:   defaults.Gid,
-		Sgids: defaults.Sgids,
+		Sgids: append([]int{}, defaults.Sgids...), // Sgids slice *cannot* be nil.
 		Home:  defaults.Home,
-	}
-
-	// Sgids slice *cannot* be nil.
-	if user.Sgids == nil {
-		user.Sgids = []int{}
 	}
 
 	// Allow for userSpec to have either "user", or optionally "user:group" syntax.
