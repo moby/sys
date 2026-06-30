@@ -156,11 +156,8 @@ func ParsePasswdFilter(r io.Reader, filter func(User) bool) ([]User, error) {
 		//  adm:x:3:4:adm:/var/adm:/bin/false
 		p := User{}
 		ok, err := parseLine(line, &p.Name, &p.Pass, &p.Uid, &p.Gid, &p.Gecos, &p.Home, &p.Shell)
-		if err != nil {
-			return nil, fmt.Errorf("invalid line (%q): %w", string(line), err)
-		}
-		if !ok {
-			// Skip empty lines, and don't consider them.
+		if err != nil || !ok {
+			// Skip malformed and empty lines, and don't consider them.
 			continue
 		}
 
@@ -222,11 +219,8 @@ func ParseGroupFilter(r io.Reader, filter func(Group) bool) ([]Group, error) {
 		//  adm:x:4:root,adm,daemon
 		p := Group{}
 		ok, err := parseLine(line, &p.Name, &p.Pass, &p.Gid, &p.List)
-		if err != nil {
-			return nil, fmt.Errorf("invalid line (%q): %w", string(line), err)
-		}
-		if !ok {
-			// Skip empty lines, and don't consider them.
+		if err != nil || !ok {
+			// Skip malformed and empty lines, and don't consider them.
 			continue
 		}
 
@@ -536,11 +530,8 @@ func ParseSubIDFilter(r io.Reader, filter func(SubID) bool) ([]SubID, error) {
 		// see: man 5 subuid
 		p := SubID{}
 		ok, err := parseLine(line, &p.Name, &p.SubID, &p.Count)
-		if err != nil {
-			return nil, fmt.Errorf("invalid line (%q): %w", string(line), err)
-		}
-		if !ok {
-			// Skip empty lines, and don't consider them.
+		if err != nil || !ok {
+			// Skip malformed and empty lines, and don't consider them.
 			continue
 		}
 
@@ -591,11 +582,8 @@ func ParseIDMapFilter(r io.Reader, filter func(IDMap) bool) ([]IDMap, error) {
 		// see: man 7 user_namespaces
 		p := IDMap{}
 		ok, err := parseParts(bytes.Fields(line), &p.ID, &p.ParentID, &p.Count)
-		if err != nil {
-			return nil, fmt.Errorf("invalid line (%q): %w", string(line), err)
-		}
-		if !ok {
-			// Skip empty lines, and don't consider them.
+		if err != nil || !ok {
+			// Skip malformed and empty lines, and don't consider them.
 			continue
 		}
 
