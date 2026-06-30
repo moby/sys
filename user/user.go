@@ -305,9 +305,8 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 		user.Sgids = []int{}
 	}
 
-	// Allow for userArg to have either "user" syntax, or optionally "user:group" syntax
-	var userArg, groupArg string
-	parseLine([]byte(userSpec), &userArg, &groupArg)
+	// Allow for userSpec to have either "user", or optionally "user:group" syntax.
+	userArg, groupArg, _ := strings.Cut(userSpec, ":")
 
 	// Convert userArg and groupArg to be numeric, so we don't have to execute
 	// Atoi *twice* for each iteration over lines.
