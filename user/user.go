@@ -301,40 +301,35 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 	}
 
 	// Allow for userSpec to have either "user", or optionally "user:group" syntax.
-	userArg, groupArg, _ := strings.Cut(userSpec, ":")
+	usr, grp, _ := strings.Cut(userSpec, ":")
 
 	// Convert userArg and groupArg to be numeric, so we don't have to execute
 	// Atoi *twice* for each iteration over lines.
-	uidArg, isUID, err := parseNumeric(userArg)
+	userArg, err := parseUserArg(usr)
 	if err != nil {
 		return nil, err
 	}
-	gidArg, isGID, err := parseNumeric(groupArg)
+	groupArg, err := parseGroupArg(grp)
 	if err != nil {
 		return nil, err
 	}
 
 	// Find the matching user.
 	users, err := ParsePasswdFilter(passwd, func(u User) bool {
-		if userArg == "" {
+		if userArg == nil {
 			// Default to current state of the user.
 			return u.Uid == user.Uid
 		}
-
-		if isUID {
-			// If the userArg is a valid numeric value, always treat it as a UID.
-			return uidArg == u.Uid
-		}
-
-		return u.Name == userArg
+		return userArg.matches(u)
 	})
 
 	// If we can't find the user, we have to bail.
 	if err != nil && passwd != nil {
-		if userArg == "" {
-			userArg = strconv.Itoa(user.Uid)
+		name := usr
+		if userArg == nil {
+			name = strconv.Itoa(user.Uid)
 		}
-		return nil, fmt.Errorf("unable to find user %s: %w", userArg, err)
+		return nil, fmt.Errorf("unable to find user %s: %w", name, err)
 	}
 
 	var matchedUserName string
@@ -344,23 +339,21 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 		user.Uid = users[0].Uid
 		user.Gid = users[0].Gid
 		user.Home = users[0].Home
-	} else if userArg != "" {
+	} else if userArg != nil {
 		// If we can't find a user with the given username, the only other valid
 		// option is if it's a numeric username with no associated entry in passwd.
-
-		if !isUID {
-			// Not numeric.
-			return nil, fmt.Errorf("unable to find user %s: %w", userArg, ErrNoPasswdEntries)
+		if !userArg.isNumeric {
+			return nil, fmt.Errorf("unable to find user %s: %w", userArg.name, ErrNoPasswdEntries)
 		}
-		user.Uid = uidArg
+		user.Uid = userArg.uid
 	}
 
 	// On to the groups. If we matched a username, we need to do this because of
 	// the supplementary group IDs.
-	if groupArg != "" || matchedUserName != "" {
+	if groupArg != nil || matchedUserName != "" {
 		groups, err := ParseGroupFilter(group, func(g Group) bool {
 			// If the group argument isn't explicit, we'll just search for it.
-			if groupArg == "" {
+			if groupArg == nil {
 				// Check if user is a member of this group.
 				for _, u := range g.List {
 					if u == matchedUserName {
@@ -369,32 +362,24 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 				}
 				return false
 			}
-
-			if isGID {
-				// If the groupArg is numeric, always treat it as a GID.
-				return gidArg == g.Gid
-			}
-
-			return g.Name == groupArg
+			return groupArg.matches(g)
 		})
 		if err != nil && group != nil {
 			return nil, fmt.Errorf("unable to find groups for spec %v: %w", matchedUserName, err)
 		}
 
 		// Only start modifying user.Gid if it is in explicit form.
-		if groupArg != "" {
+		if groupArg != nil {
 			if len(groups) > 0 {
 				// First match wins, even if there's more than one matching entry.
 				user.Gid = groups[0].Gid
 			} else {
 				// If we can't find a group with the given name, the only other valid
 				// option is if it's a numeric group name with no associated entry in group.
-
-				if !isGID {
-					// Not numeric.
-					return nil, fmt.Errorf("unable to find group %s: %w", groupArg, ErrNoGroupEntries)
+				if !groupArg.isNumeric {
+					return nil, fmt.Errorf("unable to find group %s: %w", groupArg.name, ErrNoGroupEntries)
 				}
-				user.Gid = gidArg
+				user.Gid = groupArg.gid
 			}
 		} else if len(groups) > 0 {
 			// Supplementary group ids only make sense if in the implicit form.
@@ -406,22 +391,6 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 	}
 
 	return user, nil
-}
-
-// groupArg is a parsed group argument for [GetAdditionalGroups].
-type groupArg struct {
-	name      string
-	gid       int
-	isNumeric bool
-}
-
-// matches reports whether group g satisfies the argument. Numeric arguments
-// are matched by GID only, others by name.
-func (ag groupArg) matches(g Group) bool {
-	if ag.isNumeric {
-		return g.Gid == ag.gid
-	}
-	return g.Name == ag.name
 }
 
 // GetAdditionalGroups looks up a list of groups by name or group id
