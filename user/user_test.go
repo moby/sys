@@ -548,12 +548,6 @@ this is just some garbage data
 }
 
 func TestGetAdditionalGroups(t *testing.T) {
-	type foo struct {
-		groups   []string
-		expected []int
-		hasError bool
-	}
-
 	groupContent := `
 root:x:0:root
 adm:x:43:
@@ -564,79 +558,84 @@ adm:x:4343:root,adm-duplicate
 toolarge:x:2147483648:
 this is just some garbage data
 ` + largeGroup()
-	tests := []foo{
+	tests := []struct {
+		doc      string
+		groups   []string
+		expected []int
+		hasError bool
+	}{
 		{
-			// empty group
+			doc:      "empty group",
 			groups:   []string{},
 			expected: []int{},
 		},
 		{
-			// single group
+			doc:      "single group",
 			groups:   []string{"adm"},
 			expected: []int{43},
 		},
 		{
-			// numeric group miss must continue checking remaining groups
+			doc:      "numeric group miss must continue checking remaining groups",
 			groups:   []string{"10001", "adm"},
 			expected: []int{43, 10001},
 		},
 		{
-			// multiple groups
+			doc:      "multiple groups",
 			groups:   []string{"adm", "grp"},
 			expected: []int{43, 1234},
 		},
 		{
-			// invalid group
+			doc:      "invalid group",
 			groups:   []string{"adm", "grp", "not-exist"},
 			expected: nil,
 			hasError: true,
 		},
 		{
-			// group with numeric id
+			doc:      "group with numeric id",
 			groups:   []string{"43"},
 			expected: []int{43},
 		},
 		{
-			// group with unknown numeric id
+			doc:      "group with unknown numeric id",
 			groups:   []string{"adm", "10001"},
 			expected: []int{43, 10001},
 		},
 		{
-			// groups specified twice with numeric and name
+			doc:      "groups specified twice with numeric and name",
 			groups:   []string{"adm", "43"},
 			expected: []int{43},
 		},
 		{
-			// groups with too small id
+			doc:      "groups with negative id",
 			groups:   []string{"-1"},
 			expected: nil,
 			hasError: true,
 		},
 		{
-			// groups with too large id
+			doc:      "groups with too large id",
 			groups:   []string{strconv.FormatInt(1<<31, 10)},
 			expected: nil,
 			hasError: true,
 		},
 		{
-			// group with very long list of users
+			doc:      "group with very long list of users",
 			groups:   []string{"largegroup"},
 			expected: []int{1000},
 		},
 		{
-			// numeric group must not resolve as group name
+			doc:      "maxID + 1 group must not resolve as group name",
 			groups:   []string{"2147483648"},
 			expected: nil,
 			hasError: true,
 		},
 		{
-			// numeric group must not resolve as group name
+			doc:      "maxInt64+1 group must not resolve as group name",
 			groups:   []string{"9223372036854775808"},
 			expected: nil,
 			hasError: true,
 		},
 		{
-			// group entry with out-of-range gid
+			doc:      "group entry with out-of-range gid",
 			groups:   []string{"toolarge"},
 			expected: nil,
 			hasError: true,
@@ -644,8 +643,7 @@ this is just some garbage data
 	}
 
 	for _, tc := range tests {
-		name := strings.Join(tc.groups, ",")
-		t.Run(name, func(t *testing.T) {
+		t.Run(tc.doc, func(t *testing.T) {
 			group := strings.NewReader(groupContent)
 
 			gids, err := GetAdditionalGroups(tc.groups, group)
@@ -665,17 +663,18 @@ this is just some garbage data
 
 func TestGetAdditionalGroupsNumeric(t *testing.T) {
 	tests := []struct {
+		doc      string
 		groups   []string
 		expected []int
 		hasError bool
 	}{
 		{
-			// numeric groups only
+			doc:      "numeric groups only",
 			groups:   []string{"1234", "5678"},
 			expected: []int{1234, 5678},
 		},
 		{
-			// numeric and alphabetic
+			doc:      "numeric and alphabetic",
 			groups:   []string{"1234", "fake"},
 			expected: nil,
 			hasError: true,
@@ -683,8 +682,7 @@ func TestGetAdditionalGroupsNumeric(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		name := strings.Join(tc.groups, ",")
-		t.Run(name, func(t *testing.T) {
+		t.Run(tc.doc, func(t *testing.T) {
 			gids, err := GetAdditionalGroups(tc.groups, nil)
 			if tc.hasError && err == nil {
 				t.Fatalf("Parse(%#v) expects error but has none", tc)
