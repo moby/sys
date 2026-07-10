@@ -399,17 +399,13 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 // or the given group data is nil, the id will be returned as-is
 // provided it is in the legal range.
 func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, error) {
-	addtlGroups := make([]groupArg, len(additionalGroups))
-	for i, ag := range additionalGroups {
-		gid, ok, err := parseNumeric(ag)
+	addtlGroups := make([]groupArg, 0, len(additionalGroups))
+	for _, ag := range additionalGroups {
+		groupArg, err := parseGroupArg(ag)
 		if err != nil {
 			return nil, err
 		}
-		addtlGroups[i] = groupArg{
-			name:      ag,
-			gid:       gid,
-			isNumeric: ok,
-		}
+		addtlGroups = append(addtlGroups, *groupArg)
 	}
 
 	groups := []Group{}
