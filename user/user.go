@@ -303,7 +303,7 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 	// Allow for userSpec to have either "user", or optionally "user:group" syntax.
 	usr, grp, _ := strings.Cut(userSpec, ":")
 
-	// Convert userArg and groupArg to be numeric, so we don't have to execute
+	// Convert usr and grp to be numeric, so we don't have to execute
 	// Atoi *twice* for each iteration over lines.
 	userArg, err := parseUserArg(usr)
 	if err != nil {
