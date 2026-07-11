@@ -17,9 +17,9 @@ const (
 )
 
 var (
-	// ErrNoPasswdEntries is returned if no matching entries were found in /etc/group.
+	// ErrNoPasswdEntries is returned if no matching entries were found in /etc/passwd.
 	ErrNoPasswdEntries = errors.New("no matching entries in passwd file")
-	// ErrNoGroupEntries is returned if no matching entries were found in /etc/passwd.
+	// ErrNoGroupEntries is returned if no matching entries were found in /etc/group.
 	ErrNoGroupEntries = errors.New("no matching entries in group file")
 	// ErrRange is returned if a UID or GID is outside of the valid range.
 	ErrRange = fmt.Errorf("uids and gids must be in range %d-%d", minID, maxID)
