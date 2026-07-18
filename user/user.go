@@ -303,7 +303,7 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 	// Allow for userSpec to have either "user", or optionally "user:group" syntax.
 	usr, grp, _ := strings.Cut(userSpec, ":")
 
-	// Convert userArg and groupArg to be numeric, so we don't have to execute
+	// Convert usr and grp to be numeric, so we don't have to execute
 	// Atoi *twice* for each iteration over lines.
 	userArg, err := parseUserArg(usr)
 	if err != nil {
@@ -399,17 +399,13 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 // or the given group data is nil, the id will be returned as-is
 // provided it is in the legal range.
 func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, error) {
-	addtlGroups := make([]groupArg, len(additionalGroups))
-	for i, ag := range additionalGroups {
-		gid, ok, err := parseNumeric(ag)
+	addtlGroups := make([]groupArg, 0, len(additionalGroups))
+	for _, ag := range additionalGroups {
+		groupArg, err := parseGroupArg(ag)
 		if err != nil {
 			return nil, err
 		}
-		addtlGroups[i] = groupArg{
-			name:      ag,
-			gid:       gid,
-			isNumeric: ok,
-		}
+		addtlGroups = append(addtlGroups, *groupArg)
 	}
 
 	groups := []Group{}
