@@ -64,42 +64,41 @@ func parseLine(line []byte, v ...any) (ok bool, _ error) {
 	return parseParts(bytes.Split(line, []byte(":")), v...)
 }
 
-func parseParts(parts [][]byte, v ...any) (ok bool, _ error) {
+func parseParts(parts [][]byte, fields ...any) (ok bool, _ error) {
 	if len(parts) == 0 {
 		return false, nil
 	}
 
-	for i, p := range parts {
-		// Ignore cases where we don't have enough fields to populate the arguments.
-		// Some configuration files like to misbehave.
-		if len(v) <= i {
-			break
+	for i, v := range fields {
+		var p []byte
+		if i < len(parts) {
+			// Ignore cases where we don't have enough fields to populate the arguments.
+			// Some configuration files like to misbehave.
+			// Depending on the field-type, missing fields can be either ignored,
+			// (e.g. empty string) or produce an error (missing/empty numeric field).
+			p = parts[i]
 		}
 
 		// Use the type of the argument to figure out how to parse it, scanf() style.
 		// This is legit.
-		switch e := v[i].(type) {
+		switch e := v.(type) {
 		case *string:
 			*e = string(p)
 		case *int:
-			if len(p) != 0 {
-				n, ok, err := parseNumeric(string(p))
-				if err != nil {
-					return true, fmt.Errorf("parsing integer field %d: %w", i, err)
-				}
-				if !ok {
-					return true, fmt.Errorf("parsing integer field %d: %q is not numeric", i, p)
-				}
-				*e = n
+			n, ok, err := parseNumeric(string(p))
+			if err != nil {
+				return true, fmt.Errorf("parsing integer field %d: %w", i, err)
 			}
+			if !ok {
+				return true, fmt.Errorf("parsing integer field %d: %q is not numeric", i, p)
+			}
+			*e = n
 		case *int64:
-			if len(p) != 0 {
-				n, err := strconv.ParseInt(string(p), 10, 64)
-				if err != nil {
-					return true, fmt.Errorf("parsing integer field %d: %w", i, err)
-				}
-				*e = n
+			n, err := strconv.ParseInt(string(p), 10, 64)
+			if err != nil {
+				return true, fmt.Errorf("parsing integer field %d: %w", i, err)
 			}
+			*e = n
 		case *[]string:
 			// Comma-separated lists.
 			if len(p) != 0 {

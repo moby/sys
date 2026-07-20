@@ -18,7 +18,7 @@ func TestParseLine(t *testing.T) {
 	var (
 		a, b string
 		c    []string
-		d    int
+		d, e int
 	)
 
 	_, err := parseLine([]byte(""), &a, &b)
@@ -87,6 +87,16 @@ func TestParseLine(t *testing.T) {
 	if a != "b" || b != "c" || d != 12 {
 		t.Fatalf("a should be 'b' and b should be 'c', and d should be 12 ('%v', '%v', %v)", a, b, d)
 	}
+
+	// partial line, missing numeric value
+	_, err = parseLine([]byte("a:b:3"), &a, &b, &d, &e)
+	expErr := `parsing integer field 3: "" is not numeric`
+	if err == nil || err.Error() != expErr {
+		t.Fatalf("expected '%s', got: %v", expErr, err)
+	}
+	if a != "a" || b != "b" || d != 3 || e != 0 {
+		t.Fatalf("expected 'a', 'b', 3, 0, got ('%v', '%v', '%v', '%v')", a, b, d, e)
+	}
 }
 
 func TestParsePasswdFilter(t *testing.T) {
@@ -98,8 +108,8 @@ this is just some garbage data
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	if len(users) != 3 {
-		t.Fatalf("Expected 3 users, got %v", len(users))
+	if len(users) != 2 {
+		t.Fatalf("Expected 2 users, got %v", len(users))
 	}
 	if users[0].Uid != 0 || users[0].Name != "root" {
 		t.Fatalf("Expected users[0] to be 0 - root, got %v - %v", users[0].Uid, users[0].Name)
@@ -118,8 +128,8 @@ this is just some garbage data
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	if len(groups) != 4 {
-		t.Fatalf("Expected 4 groups, got %v", len(groups))
+	if len(groups) != 3 {
+		t.Fatalf("Expected 3 groups, got %v", len(groups))
 	}
 	if groups[0].Gid != 0 || groups[0].Name != "root" || len(groups[0].List) != 1 {
 		t.Fatalf("Expected groups[0] to be 0 - root - 1 member, got %v - %v - %v", groups[0].Gid, groups[0].Name, len(groups[0].List))
