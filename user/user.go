@@ -243,9 +243,6 @@ func GetExecUserPath(userSpec string, defaults *ExecUser, passwdPath, groupPath 
 //
 // See https://github.com/containerd/containerd/commit/de1341c201ffb0effebbf51d00376181968c8779
 func parseNumeric(val string) (int, bool, error) {
-	if val == "" {
-		return 0, false, nil
-	}
 	id, err := strconv.Atoi(val)
 	if err != nil {
 		if errors.Is(err, strconv.ErrSyntax) {
