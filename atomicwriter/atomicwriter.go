@@ -152,7 +152,7 @@ func (w *atomicFileWriter) Close() (retErr error) {
 		return err
 	}
 	if w.writeErr == nil && w.written {
-		return os.Rename(w.f.Name(), w.fn)
+		return atomicwriterRename(w.f.Name(), w.fn)
 	}
 	return nil
 }
