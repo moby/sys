@@ -62,8 +62,7 @@ const (
 235 35 253:32 / /var/lib/docker/devicemapper/mnt/1a28059f29eda821578b1bb27a60cc71f76f846a551abefabce6efd0146dce9f rw,relatime shared:217 - ext4 /dev/mapper/docker-253:2-425882-1a28059f29eda821578b1bb27a60cc71f76f846a551abefabce6efd0146dce9f rw,seclabel,discard,stripe=16,data=ordered
 239 35 253:33 / /var/lib/docker/devicemapper/mnt/e9aa60c60128cad1 rw,relatime shared:221 - ext4 /dev/mapper/docker-253:2-425882-e9aa60c60128cad1 rw,seclabel,discard,stripe=16,data=ordered
 243 35 253:34 / /var/lib/docker/devicemapper/mnt/5fec11304b6f4713fea7b6ccdcc1adc0a1966187f590fe25a8227428a8df275d-init rw,relatime shared:225 - ext4 /dev/mapper/docker-253:2-425882-5fec11304b6f4713fea7b6ccdcc1adc0a1966187f590fe25a8227428a8df275d-init rw,seclabel,discard,stripe=16,data=ordered
-247 35 253:35 / /var/lib/docker/devicemapper/mnt/5fec11304b6f4713fea7b6ccdcc1adc0a1966187f590fe25a8227428a8df275d rw,relatime shared:229 - ext4 /dev/mapper/docker-253:2-425882-5fec11304b6f4713fea7b6ccdcc1adc0a1966187f590fe25a8227428a8df275d rw,seclabel,discard,stripe=16,data=ordered
-31 21 0:23 / /DATA/foo_bla_bla rw,relatime - cifs //foo/BLA\040BLA\040BLA/ rw,sec=ntlm,cache=loose,unc=\\foo\BLA BLA BLA,username=my_login,domain=mydomain.com,uid=12345678,forceuid,gid=12345678,forcegid,addr=10.1.30.10,file_mode=0755,dir_mode=0755,nounix,rsize=61440,wsize=65536,actimeo=1`
+247 35 253:35 / /var/lib/docker/devicemapper/mnt/5fec11304b6f4713fea7b6ccdcc1adc0a1966187f590fe25a8227428a8df275d rw,relatime shared:229 - ext4 /dev/mapper/docker-253:2-425882-5fec11304b6f4713fea7b6ccdcc1adc0a1966187f590fe25a8227428a8df275d rw,seclabel,discard,stripe=16,data=ordered`
 
 	ubuntuMountinfo = `15 20 0:14 / /sys rw,nosuid,nodev,noexec,relatime - sysfs sysfs rw
 16 20 0:3 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
@@ -420,7 +419,7 @@ const (
 99 15 8:33 / /media/REMOVE\040ME rw,nosuid,nodev,relatime - fuseblk /dev/sdc1 rw,user_id=0,group_id=0,allow_other,blksize=4096`
 
 	mountInfoWithSpaces = `486 28 252:1 / /mnt/foo\040bar rw,relatime shared:243 - ext4 /dev/vda1 rw,data=ordered
-31 21 0:23 / /DATA/foo_bla_bla rw,relatime - cifs //foo/BLA\040BLA\040BLA/ rw,sec=ntlm,cache=loose,unc=\\foo\BLA BLA BLA,username=my_login,domain=mydomain.com,uid=12345678,forceuid,gid=12345678,forcegid,addr=10.1.30.10,file_mode=0755,dir_mode=0755,nounix,rsize=61440,wsize=65536,actimeo=1
+31 21 0:23 / /DATA/foo_bla_bla rw,relatime - cifs //foo/BLA\040BLA\040BLA/ rw,sec=ntlm,cache=loose,username=my_login,domain=mydomain.com,uid=12345678,forceuid,gid=12345678,forcegid,addr=10.1.30.10,file_mode=0755,dir_mode=0755,nounix,rsize=61440,wsize=65536,actimeo=1
 649 94 259:5 /tmp/newline\012tab\011space\040backslash\134quote1'quote2" /tmp/newline\012tab\011space\040backslash\134quote1'quote2" rw,relatime shared:47 - ext4 /dev/nvme0n1p5 rw,seclabel`
 )
 
@@ -434,7 +433,7 @@ func TestParseMountInfo(t *testing.T) {
 		{
 			name:           "fedora",
 			info:           fedoraMountinfo,
-			expectedLength: 58,
+			expectedLength: 57,
 			mi: &Info{
 				ID:         15,
 				Parent:     35,
@@ -562,7 +561,7 @@ func TestParseMountinfoWithSpaces(t *testing.T) {
 			Optional:   "",
 			FSType:     "cifs",
 			Source:     `//foo/BLA BLA BLA/`,
-			VFSOptions: `rw,sec=ntlm,cache=loose,unc=\\foo\BLA`,
+			VFSOptions: `rw,sec=ntlm,cache=loose,username=my_login,domain=mydomain.com,uid=12345678,forceuid,gid=12345678,forcegid,addr=10.1.30.10,file_mode=0755,dir_mode=0755,nounix,rsize=61440,wsize=65536,actimeo=1`,
 		},
 		{
 			ID:     649,
@@ -667,10 +666,9 @@ func TestParseMountinfoExtraCases(t *testing.T) {
 			valid: false,
 		},
 		{
-			name:  "extra fields at the end", // which we currently discard
-			entry: `251 15 0:3573 / /mnt/point rw,relatime - aufs none rw,unc=buggy but we cope`,
-			valid: true,
-			exp:   &Info{Mountpoint: "/mnt/point", FSType: "aufs", Source: "none"},
+			name:  "extra fields at the end (kernel < 3.10 bug)",
+			entry: `251 15 0:3573 / /mnt/point rw,relatime - aufs none rw,unc=buggy pre-kernel 3.10 data`,
+			valid: false,
 		},
 		{
 			name:  "one optional field",
