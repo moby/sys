@@ -1,13 +1,17 @@
 package user
 
-import (
-	"os"
-)
+import "os"
 
-// This is currently a wrapper around [os.MkdirAll] since currently
-// permissions aren't set through this path, the identity isn't utilized.
-// Ownership is handled elsewhere, but in the future could be support here
-// too.
-func mkdirAs(path string, _ os.FileMode, _, _ int, _, _ bool) error {
-	return os.MkdirAll(path, 0)
+// mkdirAs creates path, optionally creating any missing parent directories.
+//
+// On Windows this is currently a thin wrapper around os.Mkdir and
+// os.MkdirAll. Unlike the Unix implementation, ownership and permission
+// bits are not applied, and errors for existing paths follow the underlying
+// os package semantics (for example, an existing non-directory does not
+// return ENOTDIR).
+func mkdirAs(path string, _ os.FileMode, _, _ int, mkAll, _ bool) error {
+	if mkAll {
+		return os.MkdirAll(path, 0)
+	}
+	return os.Mkdir(path, 0)
 }
