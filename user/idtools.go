@@ -117,22 +117,14 @@ func (i IdentityMapping) RootPair() (int, int) {
 	return uid, gid
 }
 
-// ToHost returns the host UID and GID for the container uid, gid.
-// Remapping is only performed if the ids aren't already the remapped root ids
+// ToHost returns the host UID and GID for the container uid and gid.
+// An empty mapping is treated as identity.
 func (i IdentityMapping) ToHost(uid, gid int) (int, int, error) {
-	var err error
-	ruid, rgid := i.RootPair()
-
-	if uid != ruid {
-		ruid, err = toHost(uid, i.UIDMaps)
-		if err != nil {
-			return ruid, rgid, err
-		}
+	ruid, err := toHost(uid, i.UIDMaps)
+	if err != nil {
+		return -1, -1, err
 	}
-
-	if gid != rgid {
-		rgid, err = toHost(gid, i.GIDMaps)
-	}
+	rgid, err := toHost(gid, i.GIDMaps)
 	return ruid, rgid, err
 }
 
