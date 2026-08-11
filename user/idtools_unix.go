@@ -4,19 +4,15 @@ package user
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
 	"syscall"
 )
 
-func mkdirAs(path string, mode os.FileMode, uid, gid int, mkAll, onlyNew bool) error {
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-
-	stat, err := os.Stat(path)
+func mkdirAs(fsys FS, path string, mode os.FileMode, uid, gid int, mkAll, onlyNew bool) error {
+	stat, err := fsys.Stat(path)
 	if err == nil {
 		if !stat.IsDir() {
 			return &os.PathError{Op: "mkdir", Path: path, Err: syscall.ENOTDIR}
@@ -26,7 +22,7 @@ func mkdirAs(path string, mode os.FileMode, uid, gid int, mkAll, onlyNew bool) e
 		}
 
 		// short-circuit -- we were called with an existing directory and chown was requested
-		return setPermissions(path, mode, uid, gid, stat)
+		return setPermissions(fsys, path, mode, uid, gid, stat)
 	}
 
 	// make an array containing the original path asked for, plus (for mkAll == true)
@@ -44,23 +40,23 @@ func mkdirAs(path string, mode os.FileMode, uid, gid int, mkAll, onlyNew bool) e
 		dirPath := path
 		for {
 			dirPath = filepath.Dir(dirPath)
-			if dirPath == "/" {
+			if dirPath == string(filepath.Separator) || dirPath == "." {
 				break
 			}
-			if _, err = os.Stat(dirPath); os.IsNotExist(err) {
+			if _, err = fsys.Stat(dirPath); os.IsNotExist(err) {
 				paths = append(paths, dirPath)
 			}
 		}
-		if err = os.MkdirAll(path, mode); err != nil {
+		if err = fsys.MkdirAll(path, mode); err != nil {
 			return err
 		}
-	} else if err = os.Mkdir(path, mode); err != nil {
+	} else if err = fsys.Mkdir(path, mode); err != nil {
 		return err
 	}
 	// even if it existed, we will chown the requested path + any subpaths that
 	// didn't exist when we called MkdirAll
 	for _, pathComponent := range paths {
-		if err = setPermissions(pathComponent, mode, uid, gid, nil); err != nil {
+		if err = setPermissions(fsys, pathComponent, mode, uid, gid, nil); err != nil {
 			return err
 		}
 	}
@@ -71,16 +67,16 @@ func mkdirAs(path string, mode os.FileMode, uid, gid int, mkAll, onlyNew bool) e
 // Normally a Chown is a no-op if uid/gid match, but in some cases this can still cause an error, e.g. if the
 // dir is on an NFS share, so don't call chown unless we absolutely must.
 // Likewise for setting permissions.
-func setPermissions(p string, mode os.FileMode, uid, gid int, stat os.FileInfo) error {
+func setPermissions(fsys FS, p string, mode os.FileMode, uid, gid int, stat fs.FileInfo) error {
 	if stat == nil {
 		var err error
-		stat, err = os.Stat(p)
+		stat, err = fsys.Stat(p)
 		if err != nil {
 			return err
 		}
 	}
 	if stat.Mode().Perm() != mode.Perm() {
-		if err := os.Chmod(p, mode.Perm()); err != nil {
+		if err := fsys.Chmod(p, mode.Perm()); err != nil {
 			return err
 		}
 	}
@@ -88,7 +84,7 @@ func setPermissions(p string, mode os.FileMode, uid, gid int, stat os.FileInfo) 
 	if ssi.Uid == uint32(uid) && ssi.Gid == uint32(gid) {
 		return nil
 	}
-	return os.Chown(p, uid, gid)
+	return fsys.Chown(p, uid, gid)
 }
 
 // LoadIdentityMapping takes a requested username and

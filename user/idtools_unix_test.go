@@ -5,6 +5,7 @@ package user
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -292,9 +293,7 @@ func readTree(base, root string) (map[string]node, error) {
 			if err != nil {
 				return nil, err
 			}
-			for path, nodeinfo := range subtree {
-				tree[path] = nodeinfo
-			}
+			maps.Copy(tree, subtree)
 		}
 	}
 	return tree, nil
@@ -385,10 +384,57 @@ func TestMkdirIsNotDir(t *testing.T) {
 		t.Fatalf("Couldn't create temp dir: %v", err)
 	}
 
-	err = mkdirAs(file.Name(), 0o755, 0, 0, false, false)
+	fsys := FS(&hostFS{})
+
+	err = mkdirAs(fsys, file.Name(), 0o755, 0, 0, false, false)
 	if expected := "mkdir " + file.Name() + ": not a directory"; err.Error() != expected {
 		t.Fatalf("expected error: %v, got: %v", expected, err)
 	}
+}
+
+func TestMkdirAllAndChownFSNilUsesHostFS(t *testing.T) {
+	requiresRoot(t)
+
+	baseDir := t.TempDir()
+	path := filepath.Join(baseDir, "usr", "share")
+
+	if err := MkdirAllAndChownFS(nil, path, 0o755, 99, 99); err != nil {
+		t.Fatal(err)
+	}
+
+	s := &unix.Stat_t{}
+	if err := unix.Stat(path, s); err != nil {
+		t.Fatal(err)
+	}
+	if s.Uid != 99 || s.Gid != 99 {
+		t.Fatalf("expected ownership 99:99, got %d:%d", s.Uid, s.Gid)
+	}
+}
+
+func TestMkdirAllAndChownFSWithRoot(t *testing.T) {
+	requiresRoot(t)
+
+	baseDir := t.TempDir()
+	root, err := os.OpenRoot(baseDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+
+	if err := MkdirAllAndChownFS(root, "usr/share", 0o755, 123, 124); err != nil {
+		t.Fatal(err)
+	}
+
+	verifyTree, err := readTree(baseDir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := map[string]node{
+		"usr":       {123, 124},
+		"usr/share": {123, 124},
+	}
+	compareTrees(t, expected, verifyTree)
 }
 
 func requiresRoot(t *testing.T) {
