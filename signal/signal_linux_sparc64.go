@@ -1,4 +1,4 @@
-//go:build !mips && !mipsle && !mips64 && !mips64le && !sparc64
+//go:build linux && sparc64
 
 package signal
 
@@ -34,7 +34,7 @@ var SignalMap = map[string]syscall.Signal{
 	"PWR":      unix.SIGPWR,
 	"QUIT":     unix.SIGQUIT,
 	"SEGV":     unix.SIGSEGV,
-	"STKFLT":   unix.SIGSTKFLT,
+	"EMT":      unix.SIGEMT,
 	"STOP":     unix.SIGSTOP,
 	"SYS":      unix.SIGSYS,
 	"TERM":     unix.SIGTERM,
