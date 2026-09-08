@@ -3,6 +3,7 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -100,10 +101,19 @@ func setPermissions(p string, mode os.FileMode, uid, gid int, stat os.FileInfo) 
 // using the data from /etc/sub{uid,gid} ranges, creates the
 // proper uid and gid remapping ranges for that user/group pair
 func LoadIdentityMapping(name string) (IdentityMapping, error) {
-	// TODO: Consider adding support for calling out to "getent"
 	usr, err := LookupUser(name)
 	if err != nil {
-		return IdentityMapping{}, fmt.Errorf("could not get user for username %s: %w", name, err)
+		if !errors.Is(err, ErrNoPasswdEntries) {
+			return IdentityMapping{}, fmt.Errorf("could not get user for username %s: %w", name, err)
+		}
+		// /etc/passwd has no entry for this user, but the account may still
+		// be resolvable through systemd-userdb (LDAP, sssd, systemd-homed,
+		// dynamic users), which this package does not consult directly.
+		// Ask systemd-userdbd's multiplexer over Varlink before giving up.
+		usr, err = lookupUserViaSystemdUserdb(name)
+		if err != nil {
+			return IdentityMapping{}, fmt.Errorf("could not get user for username %s: %w", name, err)
+		}
 	}
 
 	subuidRanges, err := lookupSubRangesFile("/etc/subuid", usr)
