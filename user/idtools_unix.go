@@ -3,8 +3,11 @@
 package user
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"syscall"
@@ -100,10 +103,18 @@ func setPermissions(p string, mode os.FileMode, uid, gid int, stat os.FileInfo) 
 // using the data from /etc/sub{uid,gid} ranges, creates the
 // proper uid and gid remapping ranges for that user/group pair
 func LoadIdentityMapping(name string) (IdentityMapping, error) {
-	// TODO: Consider adding support for calling out to "getent"
 	usr, err := LookupUser(name)
 	if err != nil {
-		return IdentityMapping{}, fmt.Errorf("could not get user for username %s: %w", name, err)
+		if !errors.Is(err, ErrNoPasswdEntries) {
+			return IdentityMapping{}, fmt.Errorf("could not get user for username %s: %w", name, err)
+		}
+		// /etc/passwd has no entry for this user, but the account may still
+		// be resolvable through NSS (LDAP, sssd, etc.), which this package
+		// does not consult directly. Ask getent, which does, before giving up.
+		usr, err = lookupUserViaGetent(name)
+		if err != nil {
+			return IdentityMapping{}, fmt.Errorf("could not get user for username %s: %w", name, err)
+		}
 	}
 
 	subuidRanges, err := lookupSubRangesFile("/etc/subuid", usr)
@@ -119,6 +130,31 @@ func LoadIdentityMapping(name string) (IdentityMapping, error) {
 		UIDMaps: subuidRanges,
 		GIDMaps: subgidRanges,
 	}, nil
+}
+
+// lookupUserViaGetent resolves name through the system "getent" command,
+// which consults NSS (LDAP, sssd, etc.) in addition to /etc/passwd. It is
+// used as a fallback when LookupUser can't find the account by reading
+// /etc/passwd directly.
+func lookupUserViaGetent(name string) (User, error) {
+	getent, err := exec.LookPath("getent")
+	if err != nil {
+		return User{}, ErrNoPasswdEntries
+	}
+	out, err := exec.Command(getent, "passwd", name).Output()
+	if err != nil {
+		return User{}, ErrNoPasswdEntries
+	}
+	users, err := ParsePasswdFilter(bytes.NewReader(out), func(u User) bool {
+		return u.Name == name
+	})
+	if err != nil {
+		return User{}, err
+	}
+	if len(users) == 0 {
+		return User{}, ErrNoPasswdEntries
+	}
+	return users[0], nil
 }
 
 func lookupSubRangesFile(path string, usr User) ([]IDMap, error) {

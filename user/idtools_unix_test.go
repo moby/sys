@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -396,4 +397,31 @@ func requiresRoot(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("skipping test that requires root")
 	}
+}
+
+func TestLookupUserViaGetent(t *testing.T) {
+	if _, err := exec.LookPath("getent"); err != nil {
+		t.Skip("getent not available")
+	}
+
+	t.Run("existing user", func(t *testing.T) {
+		want, err := CurrentUser()
+		if err != nil {
+			t.Fatalf("CurrentUser: %v", err)
+		}
+		got, err := lookupUserViaGetent(want.Name)
+		if err != nil {
+			t.Fatalf("lookupUserViaGetent(%q): %v", want.Name, err)
+		}
+		if got.Name != want.Name || got.Uid != want.Uid {
+			t.Fatalf("lookupUserViaGetent(%q) = %+v, want Name=%q Uid=%d", want.Name, got, want.Name, want.Uid)
+		}
+	})
+
+	t.Run("unknown user", func(t *testing.T) {
+		_, err := lookupUserViaGetent("no-such-user-getent-fallback-test")
+		if !errors.Is(err, ErrNoPasswdEntries) {
+			t.Fatalf("lookupUserViaGetent(unknown user) = %v, want ErrNoPasswdEntries", err)
+		}
+	})
 }
