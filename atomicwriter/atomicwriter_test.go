@@ -262,6 +262,63 @@ func TestWriteFile(t *testing.T) {
 	})
 }
 
+func TestAtomicWriterRename(t *testing.T) {
+	t.Run("rename to new path", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		srcPath := filepath.Join(tmpDir, "src.txt")
+		dstPath := filepath.Join(tmpDir, "dst.txt")
+		srcContent := []byte("source content")
+		fileMode := testMode()
+		if err := os.WriteFile(srcPath, srcContent, fileMode); err != nil {
+			t.Fatalf("Error writing source file: %v", err)
+		}
+
+		if err := atomicwriterRename(srcPath, dstPath); err != nil {
+			t.Fatalf("Error renaming file: %v", err)
+		}
+
+		if _, err := os.Stat(srcPath); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("Source file should no longer exist, got err: %v", err)
+		}
+		assertFile(t, dstPath, srcContent, fileMode)
+	})
+	t.Run("replace existing destination", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		srcPath := filepath.Join(tmpDir, "src.txt")
+		dstPath := filepath.Join(tmpDir, "dst.txt")
+		srcContent := []byte("new content")
+		fileMode := testMode()
+		if err := os.WriteFile(srcPath, srcContent, fileMode); err != nil {
+			t.Fatalf("Error writing source file: %v", err)
+		}
+		if err := os.WriteFile(dstPath, []byte("original content"), fileMode); err != nil {
+			t.Fatalf("Error writing destination file: %v", err)
+		}
+
+		if err := atomicwriterRename(srcPath, dstPath); err != nil {
+			t.Fatalf("Error renaming file: %v", err)
+		}
+
+		if _, err := os.Stat(srcPath); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("Source file should no longer exist, got err: %v", err)
+		}
+		assertFile(t, dstPath, srcContent, fileMode)
+	})
+	t.Run("missing source", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		srcPath := filepath.Join(tmpDir, "missing.txt")
+		dstPath := filepath.Join(tmpDir, "dst.txt")
+
+		err := atomicwriterRename(srcPath, dstPath)
+		if !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("Should produce a 'not found' error, but got %[1]T (%[1]v)", err)
+		}
+		if _, err := os.Stat(dstPath); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("Destination should not exist, got err: %v", err)
+		}
+	})
+}
+
 func TestWriteSetCommit(t *testing.T) {
 	tmpDir := t.TempDir()
 
