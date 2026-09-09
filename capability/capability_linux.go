@@ -73,15 +73,16 @@ func mkStringCap(c Capabilities, which CapType) (ret string) {
 	return
 }
 
-func mkString(c Capabilities, max CapType) (ret string) {
+func mkString(c Capabilities, maxCapability CapType) (ret string) {
 	ret = "{"
-	for i := CapType(1); i <= max; i <<= 1 {
+	for i := CapType(1); i <= maxCapability; i <<= 1 {
 		ret += " " + i.String() + "=\""
-		if c.Empty(i) {
+		switch {
+		case c.Empty(i):
 			ret += "empty"
-		} else if c.Full(i) {
+		case c.Full(i):
 			ret += "full"
-		} else {
+		default:
 			ret += c.StringCap(i)
 		}
 		ret += "\""

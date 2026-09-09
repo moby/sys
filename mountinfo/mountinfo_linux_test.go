@@ -506,7 +506,7 @@ func TestParseMountInfo(t *testing.T) {
 
 func TestParseFedoraMountinfoFilterFields(t *testing.T) {
 	r := bytes.NewBuffer([]byte(fedoraMountinfo))
-	_, err := GetMountsFromReader(r, func(info *Info) (skip bool, stop bool) {
+	_, err := GetMountsFromReader(r, func(info *Info) (skip, stop bool) {
 		mi := Info{
 			ID:         15,
 			Parent:     35,

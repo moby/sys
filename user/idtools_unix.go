@@ -142,7 +142,7 @@ func lookupSubRangesFile(path string, usr User) ([]IDMap, error) {
 			ParentID: idrange.SubID,
 			Count:    idrange.Count,
 		})
-		containerID = containerID + idrange.Count
+		containerID += idrange.Count
 	}
 	return idMap, nil
 }
