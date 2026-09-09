@@ -313,9 +313,7 @@ func TestSubtreeUnbindable(t *testing.T) {
 	} else if err == nil {
 		t.Fatalf("%q should not have been bindable", sourceDir)
 	}
-	defer func() {
-		if err := Unmount(targetDir); err != nil {
-			t.Fatal(err)
-		}
-	}()
+	if err := Unmount(targetDir); err != nil {
+		t.Fatal(err)
+	}
 }

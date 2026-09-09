@@ -41,11 +41,11 @@ func ParseSignal(rawSignal string) (syscall.Signal, error) {
 		}
 		return syscall.Signal(s), nil
 	}
-	signal, ok := SignalMap[strings.TrimPrefix(strings.ToUpper(rawSignal), "SIG")]
+	sig, ok := SignalMap[strings.TrimPrefix(strings.ToUpper(rawSignal), "SIG")]
 	if !ok {
 		return -1, fmt.Errorf("invalid signal: %s", rawSignal)
 	}
-	return signal, nil
+	return sig, nil
 }
 
 // ValidSignalForPlatform returns true if a signal is valid on the platform

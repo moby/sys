@@ -49,12 +49,12 @@ func MkdirAndChown(path string, mode os.FileMode, uid, gid int, opts ...MkdirOpt
 
 // getRootUIDGID retrieves the remapped root uid/gid pair from the set of maps.
 // If the maps are empty, then the root uid/gid will default to "real" 0/0
-func getRootUIDGID(uidMap, gidMap []IDMap) (int, int, error) {
+func getRootUIDGID(uidMap, gidMap []IDMap) (uid, gid int, _ error) {
 	uid, err := toHost(0, uidMap)
 	if err != nil {
 		return -1, -1, err
 	}
-	gid, err := toHost(0, gidMap)
+	gid, err = toHost(0, gidMap)
 	if err != nil {
 		return -1, -1, err
 	}
@@ -103,14 +103,14 @@ type IdentityMapping struct {
 // RootPair returns a uid and gid pair for the root user. The error is ignored
 // because a root user always exists, and the defaults are correct when the uid
 // and gid maps are empty.
-func (i IdentityMapping) RootPair() (int, int) {
-	uid, gid, _ := getRootUIDGID(i.UIDMaps, i.GIDMaps)
+func (i IdentityMapping) RootPair() (uid, gid int) {
+	uid, gid, _ = getRootUIDGID(i.UIDMaps, i.GIDMaps)
 	return uid, gid
 }
 
 // ToHost returns the host UID and GID for the container uid, gid.
 // Remapping is only performed if the ids aren't already the remapped root ids
-func (i IdentityMapping) ToHost(uid, gid int) (int, int, error) {
+func (i IdentityMapping) ToHost(uid, gid int) (hostUID, hostGID int, _ error) {
 	var err error
 	ruid, rgid := i.RootPair()
 
@@ -128,7 +128,7 @@ func (i IdentityMapping) ToHost(uid, gid int) (int, int, error) {
 }
 
 // ToContainer returns the container UID and GID for the host uid and gid
-func (i IdentityMapping) ToContainer(uid, gid int) (int, int, error) {
+func (i IdentityMapping) ToContainer(uid, gid int) (ctrUID, ctrGID int, _ error) {
 	ruid, err := toContainer(uid, i.UIDMaps)
 	if err != nil {
 		return -1, -1, err

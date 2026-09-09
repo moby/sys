@@ -87,7 +87,7 @@ func parseUserArg(name string) (*userArg, error) {
 
 // matches reports whether user u satisfies the argument. Numeric arguments
 // are matched by UID only, others by name.
-func (ua *userArg) matches(u User) bool {
+func (ua *userArg) matches(u *User) bool {
 	if ua.isNumeric {
 		return u.Uid == ua.uid
 	}

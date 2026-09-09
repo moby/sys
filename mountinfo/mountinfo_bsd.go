@@ -18,9 +18,9 @@ func parseMountTable(filter FilterFunc) ([]*Info, error) {
 	}
 
 	var out []*Info
-	for _, entry := range entries {
+	for i := range entries {
 		var skip, stop bool
-		mountinfo := getMountinfo(&entry)
+		mountinfo := getMountinfo(&entries[i])
 
 		if filter != nil {
 			// filter out entries we're not interested in

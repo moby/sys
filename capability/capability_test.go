@@ -133,7 +133,7 @@ func TestNewPid2Load(t *testing.T) {
 	// Assuming that at least bounding set is not empty.
 	bset := c.StringCap(BOUNDING)
 	t.Logf("Bounding set: %s", bset)
-	if len(bset) == 0 {
+	if bset == "" {
 		t.Fatal("loaded bounding set: want non-empty, got empty")
 	}
 }
