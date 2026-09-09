@@ -56,32 +56,49 @@ type IDMap struct {
 	Count    int64
 }
 
-func parseLine(line []byte, v ...any) {
-	parseParts(bytes.Split(line, []byte(":")), v...)
+func parseLine(line []byte, v ...any) (ok bool, _ error) {
+	line = bytes.TrimSpace(line)
+	if len(line) == 0 {
+		return false, nil
+	}
+	return parseParts(bytes.Split(line, []byte(":")), v...)
 }
 
-func parseParts(parts [][]byte, v ...any) {
+func parseParts(parts [][]byte, fields ...any) (ok bool, _ error) {
 	if len(parts) == 0 {
-		return
+		return false, nil
 	}
 
-	for i, p := range parts {
-		// Ignore cases where we don't have enough fields to populate the arguments.
-		// Some configuration files like to misbehave.
-		if len(v) <= i {
-			break
+	for i, v := range fields {
+		var p []byte
+		if i < len(parts) {
+			// Ignore cases where we don't have enough fields to populate the arguments.
+			// Some configuration files like to misbehave.
+			// Depending on the field-type, missing fields can be either ignored,
+			// (e.g. empty string) or produce an error (missing/empty numeric field).
+			p = parts[i]
 		}
 
 		// Use the type of the argument to figure out how to parse it, scanf() style.
 		// This is legit.
-		switch e := v[i].(type) {
+		switch e := v.(type) {
 		case *string:
 			*e = string(p)
 		case *int:
-			// "numbers", with conversion errors ignored because of some misbehaving configuration files.
-			*e, _ = strconv.Atoi(string(p))
+			n, ok, err := parseNumeric(string(p))
+			if err != nil {
+				return true, fmt.Errorf("parsing integer field %d: %w", i, err)
+			}
+			if !ok {
+				return true, fmt.Errorf("parsing integer field %d: %q is not numeric", i, p)
+			}
+			*e = n
 		case *int64:
-			*e, _ = strconv.ParseInt(string(p), 10, 64)
+			n, err := strconv.ParseInt(string(p), 10, 64)
+			if err != nil {
+				return true, fmt.Errorf("parsing integer field %d: %w", i, err)
+			}
+			*e = n
 		case *[]string:
 			// Comma-separated lists.
 			if len(p) != 0 {
@@ -94,6 +111,7 @@ func parseParts(parts [][]byte, v ...any) {
 			panic(fmt.Sprintf("parseLine only accepts {*string, *int, *int64, *[]string} as arguments! %#v is not a pointer!", e))
 		}
 	}
+	return true, nil
 }
 
 func ParsePasswdFile(path string) ([]User, error) {
@@ -126,6 +144,7 @@ func ParsePasswdFilter(r io.Reader, filter func(User) bool) ([]User, error) {
 	for s.Scan() {
 		line := bytes.TrimSpace(s.Bytes())
 		if len(line) == 0 {
+			// Skip empty lines, and don't consider them.
 			continue
 		}
 
@@ -135,7 +154,11 @@ func ParsePasswdFilter(r io.Reader, filter func(User) bool) ([]User, error) {
 		//  root:x:0:0:root:/root:/bin/bash
 		//  adm:x:3:4:adm:/var/adm:/bin/false
 		p := User{}
-		parseLine(line, &p.Name, &p.Pass, &p.Uid, &p.Gid, &p.Gecos, &p.Home, &p.Shell)
+		ok, err := parseLine(line, &p.Name, &p.Pass, &p.Uid, &p.Gid, &p.Gecos, &p.Home, &p.Shell)
+		if err != nil || !ok {
+			// Skip malformed and empty lines, and don't consider them.
+			continue
+		}
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
@@ -194,7 +217,11 @@ func ParseGroupFilter(r io.Reader, filter func(Group) bool) ([]Group, error) {
 		//  root:x:0:root
 		//  adm:x:4:root,adm,daemon
 		p := Group{}
-		parseLine(line, &p.Name, &p.Pass, &p.Gid, &p.List)
+		ok, err := parseLine(line, &p.Name, &p.Pass, &p.Gid, &p.List)
+		if err != nil || !ok {
+			// Skip malformed and empty lines, and don't consider them.
+			continue
+		}
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
@@ -501,7 +528,11 @@ func ParseSubIDFilter(r io.Reader, filter func(SubID) bool) ([]SubID, error) {
 
 		// see: man 5 subuid
 		p := SubID{}
-		parseLine(line, &p.Name, &p.SubID, &p.Count)
+		ok, err := parseLine(line, &p.Name, &p.SubID, &p.Count)
+		if err != nil || !ok {
+			// Skip malformed and empty lines, and don't consider them.
+			continue
+		}
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
@@ -549,7 +580,11 @@ func ParseIDMapFilter(r io.Reader, filter func(IDMap) bool) ([]IDMap, error) {
 
 		// see: man 7 user_namespaces
 		p := IDMap{}
-		parseParts(bytes.Fields(line), &p.ID, &p.ParentID, &p.Count)
+		ok, err := parseParts(bytes.Fields(line), &p.ID, &p.ParentID, &p.Count)
+		if err != nil || !ok {
+			// Skip malformed and empty lines, and don't consider them.
+			continue
+		}
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
