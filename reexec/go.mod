@@ -1,3 +1,3 @@
 module github.com/moby/sys/reexec
 
-go 1.20
+go 1.24
