@@ -358,6 +358,91 @@ func TestGetRootUIDGID(t *testing.T) {
 	}
 }
 
+func TestToHost(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		idMap   []IDMap
+		uid     int
+		gid     int
+		wantUID int
+		wantGID int
+	}{
+		{
+			name:    "standard remap, container root",
+			idMap:   []IDMap{{ID: 0, ParentID: 100000, Count: 65536}},
+			uid:     0,
+			gid:     0,
+			wantUID: 100000,
+			wantGID: 100000,
+		},
+		{
+			name:    "standard remap, non-root user",
+			idMap:   []IDMap{{ID: 0, ParentID: 100000, Count: 65536}},
+			uid:     1000,
+			gid:     1000,
+			wantUID: 101000,
+			wantGID: 101000,
+		},
+		{
+			// Regression test: when the remapped-root base is below the
+			// container uid range, a non-root uid that equals the base must
+			// still be translated, and must not be treated as the remapped
+			// root (which would make the file owned by root inside the
+			// container).
+			name:    "low base remap, non-root uid equal to base",
+			idMap:   []IDMap{{ID: 0, ParentID: 1000, Count: 65536}},
+			uid:     1000,
+			gid:     1000,
+			wantUID: 2000,
+			wantGID: 2000,
+		},
+		{
+			name:    "low base remap, container root",
+			idMap:   []IDMap{{ID: 0, ParentID: 1000, Count: 65536}},
+			uid:     0,
+			gid:     0,
+			wantUID: 1000,
+			wantGID: 1000,
+		},
+		{
+			name:    "no remap (empty mapping)",
+			idMap:   nil,
+			uid:     1000,
+			gid:     1000,
+			wantUID: 1000,
+			wantGID: 1000,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := IdentityMapping{UIDMaps: tc.idMap, GIDMaps: tc.idMap}
+			uid, gid, err := m.ToHost(tc.uid, tc.gid)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if uid != tc.wantUID {
+				t.Errorf("uid: got %d, want %d", uid, tc.wantUID)
+			}
+			if gid != tc.wantGID {
+				t.Errorf("gid: got %d, want %d", gid, tc.wantGID)
+			}
+		})
+	}
+}
+
+func TestToHostRemappedRoot(t *testing.T) {
+	// ToHost expects container IDs. A host ID, such as the remapped root
+	// one, is not treated as already remapped, and so it is either mapped
+	// again (if it is in the container range) or results in an error.
+	idMap := []IDMap{{ID: 0, ParentID: 100000, Count: 65536}}
+	m := IdentityMapping{UIDMaps: idMap, GIDMaps: idMap}
+	ruid, rgid := m.RootPair()
+
+	uid, gid, err := m.ToHost(ruid, rgid)
+	if err == nil {
+		t.Fatalf("expected an error, got uid %d, gid %d", uid, gid)
+	}
+}
+
 func TestToContainer(t *testing.T) {
 	uidMap := []IDMap{
 		{
