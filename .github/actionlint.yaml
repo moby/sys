@@ -1,5 +1,0 @@
-# ubuntu-26.04 is still in public preview, and actionlint does not know
-# about it yet; remove this once it does.
-self-hosted-runner:
-  labels:
-    - ubuntu-26.04
