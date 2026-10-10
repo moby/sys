@@ -26,6 +26,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -118,5 +119,46 @@ func TestHostDevicesAllValid(t *testing.T) {
 		default:
 			t.Errorf("device entry %+v has unexpected type %v", device, device.Type)
 		}
+	}
+}
+
+type namedDir struct {
+	name string
+}
+
+func (d namedDir) Name() string               { return d.name }
+func (d namedDir) IsDir() bool                { return true }
+func (d namedDir) Type() fs.FileMode          { return fs.ModeDir }
+func (d namedDir) Info() (fs.FileInfo, error) { return nil, errors.New("unused") }
+
+func TestGetDevicesSkipsIncusMounts(t *testing.T) {
+	t.Cleanup(cleanupTest)
+
+	for _, tc := range []struct {
+		name    string
+		wantErr bool
+	}{
+		{name: ".incus-mounts"},
+		{name: "private", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			osReadDir = func(dirname string) ([]fs.DirEntry, error) {
+				if filepath.Base(dirname) == tc.name {
+					return nil, os.ErrPermission
+				}
+				return []fs.DirEntry{namedDir{name: tc.name}}, nil
+			}
+
+			_, err := GetDevices("/dev")
+			if tc.wantErr {
+				if !errors.Is(err, os.ErrPermission) {
+					t.Fatalf("got %v, want permission", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("GetDevices: %v", err)
+			}
+		})
 	}
 }
