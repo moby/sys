@@ -327,7 +327,7 @@ func TestGetBound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LastCap: %v", err)
 	}
-	for i := Cap(0); i < Cap(63); i++ {
+	for i := range Cap(63) {
 		wantErr := i > last
 		set, err := GetBound(i)
 		t.Logf("GetBound(%q): %v, %v", i, set, err)
