@@ -139,8 +139,7 @@ func TestParseGroupFileCapsReads(t *testing.T) {
 				pad[len(pad)-1] = '\n'
 			}
 
-			data := append(pad, beyond...)
-			err := os.WriteFile(fileName, data, 0o644)
+			err := os.WriteFile(fileName, append(pad, beyond...), 0o644)
 			if err != nil {
 				t.Fatal(err)
 			}

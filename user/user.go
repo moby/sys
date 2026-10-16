@@ -242,7 +242,7 @@ func GetExecUserPath(userSpec string, defaults *ExecUser, passwdPath, groupPath 
 // the UID to be <= MaxInt32.
 //
 // See https://github.com/containerd/containerd/commit/de1341c201ffb0effebbf51d00376181968c8779
-func parseNumeric(val string) (int, bool, error) {
+func parseNumeric(val string) (id int, ok bool, _ error) {
 	id, err := strconv.Atoi(val)
 	if err != nil {
 		if errors.Is(err, strconv.ErrSyntax) {
@@ -317,7 +317,7 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 			// Default to current state of the user.
 			return u.Uid == user.Uid
 		}
-		return userArg.matches(u)
+		return userArg.matches(&u)
 	})
 
 	// If we can't find the user, we have to bail.

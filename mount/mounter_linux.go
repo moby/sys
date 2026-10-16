@@ -8,14 +8,14 @@ const (
 	// ptypes is the set propagation types.
 	ptypes = unix.MS_SHARED | unix.MS_PRIVATE | unix.MS_SLAVE | unix.MS_UNBINDABLE
 
-	// pflags is the full set valid flags for a change propagation call.
+	// pflags is the full set valid knownFlags for a change propagation call.
 	pflags = ptypes | unix.MS_REC | unix.MS_SILENT
 
 	// broflags is the combination of bind and read only
 	broflags = unix.MS_BIND | unix.MS_RDONLY
 )
 
-// isremount returns true if either device name or flags identify a remount request, false otherwise.
+// isremount returns true if either device name or knownFlags identify a remount request, false otherwise.
 func isremount(device string, flags uintptr) bool {
 	switch {
 	// We treat device "" and "none" as a remount request to provide compatibility with
