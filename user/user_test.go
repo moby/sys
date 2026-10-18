@@ -15,48 +15,53 @@ import (
 )
 
 func TestParseLine(t *testing.T) {
+	mustParseLine := func(line []byte, v ...any) {
+		t.Helper()
+		if err := parseLine(line, v...); err != nil {
+			t.Fatal(err)
+		}
+	}
 	var (
 		a, b string
 		c    []string
 		d    int
 	)
 
-	parseLine([]byte(""), &a, &b)
+	mustParseLine([]byte(""), &a, &b)
 	if a != "" || b != "" {
 		t.Fatalf("a and b should be empty ('%v', '%v')", a, b)
 	}
 
-	parseLine([]byte("a"), &a, &b)
+	mustParseLine([]byte("a"), &a, &b)
 	if a != "a" || b != "" {
 		t.Fatalf("a should be 'a' and b should be empty ('%v', '%v')", a, b)
 	}
 
-	parseLine([]byte("bad boys:corny cows"), &a, &b)
+	mustParseLine([]byte("bad boys:corny cows"), &a, &b)
 	if a != "bad boys" || b != "corny cows" {
 		t.Fatalf("a should be 'bad boys' and b should be 'corny cows' ('%v', '%v')", a, b)
 	}
 
-	parseLine([]byte(""), &c)
+	mustParseLine([]byte(""), &c)
 	if len(c) != 0 {
 		t.Fatalf("c should be empty (%#v)", c)
 	}
 
-	parseLine([]byte("d,e,f:g:h:i,j,k"), &c, &a, &b, &c)
+	mustParseLine([]byte("d,e,f:g:h:i,j,k"), &c, &a, &b, &c)
 	if a != "g" || b != "h" || len(c) != 3 || c[0] != "i" || c[1] != "j" || c[2] != "k" {
 		t.Fatalf("a should be 'g', b should be 'h', and c should be ['i','j','k'] ('%v', '%v', '%#v')", a, b, c)
 	}
 
-	parseLine([]byte("::::::::::"), &a, &b, &c)
+	mustParseLine([]byte("::::::::::"), &a, &b, &c)
 	if a != "" || b != "" || len(c) != 0 {
 		t.Fatalf("a, b, and c should all be empty ('%v', '%v', '%#v')", a, b, c)
 	}
 
-	parseLine([]byte("not a number"), &d)
-	if d != 0 {
-		t.Fatalf("d should be 0 (%v)", d)
+	if err := parseLine([]byte("not a number"), &d); err == nil {
+		t.Fatal("expected an error for an invalid numeric field")
 	}
 
-	parseLine([]byte("b:12:c"), &a, &d, &b)
+	mustParseLine([]byte("b:12:c"), &a, &d, &b)
 	if a != "b" || b != "c" || d != 12 {
 		t.Fatalf("a should be 'b' and b should be 'c', and d should be 12 ('%v', '%v', %v)", a, b, d)
 	}
@@ -79,6 +84,42 @@ this is just some garbage data
 	}
 	if users[1].Uid != 3 || users[1].Name != "adm" {
 		t.Fatalf("Expected users[1] to be 3 - adm, got %v - %v", users[1].Uid, users[1].Name)
+	}
+}
+
+func TestParsePasswdFilterSkipsInvalidIDs(t *testing.T) {
+	valid := "valid:x:100:100::/home/valid:/bin/sh"
+	tests := []struct {
+		name string
+		line string
+	}{
+		{name: "invalid UID", line: "evil:x:not-a-uid:10::/home/evil:/bin/sh"},
+		{name: "invalid GID", line: "evil:x:10:not-a-gid::/home/evil:/bin/sh"},
+		{name: "UID overflow", line: "evil:x:4294967296:10::/home/evil:/bin/sh"},
+		{name: "negative UID", line: "evil:x:-1:10::/home/evil:/bin/sh"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			users, err := ParsePasswdFilter(strings.NewReader(tc.line+"\n"+valid), nil)
+			if err != nil {
+				t.Fatalf("ParsePasswdFilter: %v", err)
+			}
+			if len(users) != 1 || users[0].Name != "valid" || users[0].Uid != 100 {
+				t.Fatalf("expected only the valid passwd entry, got %+v", users)
+			}
+		})
+	}
+}
+
+func TestParseGroupFilterSkipsInvalidGID(t *testing.T) {
+	for _, line := range []string{"evil:x:not-a-gid:root", "evil:x:4294967296:root"} {
+		groups, err := ParseGroupFilter(strings.NewReader(line+"\nvalid:x:42:validuser"), nil)
+		if err != nil {
+			t.Fatalf("ParseGroupFilter: %v", err)
+		}
+		if len(groups) != 1 || groups[0].Name != "valid" || groups[0].Gid != 42 {
+			t.Errorf("expected only the valid group entry, got %+v", groups)
+		}
 	}
 }
 
