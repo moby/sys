@@ -26,14 +26,21 @@ const (
 )
 
 var lastCap = sync.OnceValues(func() (Cap, error) {
-	f, err := os.Open("/proc/sys/kernel/cap_last_cap")
+	return readLastCap("/proc/sys/kernel/cap_last_cap")
+})
+
+func readLastCap(path string) (Cap, error) {
+	f, err := os.Open(path)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return lastCapFromKernel()
+		}
 		return 0, err
 	}
+	defer f.Close()
 
 	buf := make([]byte, 11)
 	l, err := f.Read(buf)
-	f.Close()
 	if err != nil {
 		return 0, err
 	}
@@ -44,7 +51,22 @@ var lastCap = sync.OnceValues(func() (Cap, error) {
 		return 0, err
 	}
 	return Cap(last), nil
-})
+}
+
+func lastCapFromKernel() (Cap, error) {
+	for cap := Cap(0); ; cap++ {
+		_, err := prctlRetInt(syscall.PR_CAPBSET_READ, uintptr(cap), 0)
+		if errors.Is(err, syscall.EINVAL) {
+			if cap == 0 {
+				return 0, fmt.Errorf("kernel does not support capability bounding sets")
+			}
+			return cap - 1, nil
+		}
+		if err != nil {
+			return 0, fmt.Errorf("querying capability %d: %w", cap, err)
+		}
+	}
+}
 
 func capUpperMask() uint32 {
 	last, err := lastCap()
