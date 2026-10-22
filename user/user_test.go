@@ -707,3 +707,32 @@ func largeGroup() (res string) {
 	}
 	return b.String()
 }
+
+func TestParsePasswdFilterSkipsInvalidIDs(t *testing.T) {
+	users, err := ParsePasswdFilter(strings.NewReader(`
+root:x:0:0:root:/root:/bin/sh
+bad-uid:x:not-a-uid:10::/:/bin/sh
+bad-gid:x:11:not-a-gid::/:/bin/sh
+overflow:x:999999999999999999999:12::/:/bin/sh
+`), nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if len(users) != 1 || users[0].Name != "root" || users[0].Uid != 0 || users[0].Gid != 0 {
+		t.Fatalf("Expected only the valid root entry, got %+v", users)
+	}
+}
+
+func TestParseGroupFilterSkipsInvalidIDs(t *testing.T) {
+	groups, err := ParseGroupFilter(strings.NewReader(`
+root:x:0:root
+bad-gid:x:not-a-gid:root
+overflow:x:999999999999999999999:root
+`), nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if len(groups) != 1 || groups[0].Name != "root" || groups[0].Gid != 0 {
+		t.Fatalf("Expected only the valid root entry, got %+v", groups)
+	}
+}
