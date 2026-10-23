@@ -9,22 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
 	. "github.com/moby/sys/capability"
-)
-
-// Based on the fact Go 1.18+ supports Linux >= 2.6.32, and
-//   - CAP_MAC_ADMIN (33) was added in 2.6.25;
-//   - CAP_SYSLOG (34) was added in 2.6.38;
-//   - CAP_CHECKPOINT_RESTORE (40) was added in 5.9, and it is
-//     the last added capability as of today (July 2024);
-//
-// LastCap return value should be between minLastCap and maxLastCap.
-const (
-	minLastCap = CAP_MAC_ADMIN
-	maxLastCap = CAP_CHECKPOINT_RESTORE
 )
 
 func requirePCapSet(t testing.TB) {
@@ -82,14 +71,16 @@ func TestLastCap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LastCap: want nil, got error: %v", err)
 	}
-	// Sanity checks.
-	if last < minLastCap {
-		t.Errorf("LastCap: want >= %d (%s), got %d (%s)",
-			last, last, minLastCap, minLastCap)
+	buf, err := os.ReadFile("/proc/sys/kernel/cap_last_cap")
+	if err != nil {
+		t.Skip(err)
 	}
-	if last > maxLastCap {
-		t.Errorf("LastCap: want <= %d (%s), got %d (%s). Package needs to be updated.",
-			last, last, maxLastCap, maxLastCap)
+	want, err := strconv.Atoi(strings.TrimSpace(string(buf)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int(last) != want {
+		t.Errorf("LastCap: want %d (from /proc), got %d", want, last)
 	}
 }
 
@@ -107,9 +98,13 @@ func TestListSupported(t *testing.T) {
 		t.Fatalf("ListSupported: want nil, got error: %v", err)
 	}
 	t.Logf("got +%v (len %d)", list, len(list))
-	minLen := int(minLastCap) + 1
-	if len(list) < minLen {
-		t.Errorf("ListSupported: too short (want %d, got %d): +%v", minLen, len(list), list)
+	last, err := LastCap()
+	if err != nil {
+		t.Fatalf("LastCap: %v", err)
+	}
+	wantLen := min(int(last)+1, len(ListKnown()))
+	if len(list) != wantLen {
+		t.Errorf("ListSupported: want len %d, got %d: +%v", wantLen, len(list), list)
 	}
 }
 
