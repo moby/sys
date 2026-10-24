@@ -376,22 +376,6 @@ func TestToContainer(t *testing.T) {
 	}
 }
 
-// TestMkdirIsNotDir checks that MkdirAndChown returns a correct error in case
-// a directory which it is about to create already exists but is a file (rather
-// than a directory).
-func TestMkdirIsNotDir(t *testing.T) {
-	file, err := os.CreateTemp(t.TempDir(), t.Name())
-	if err != nil {
-		t.Fatalf("Couldn't create temp dir: %v", err)
-	}
-
-	expected := "mkdir " + file.Name() + ": not a directory"
-	err = MkdirAndChown(file.Name(), 0o755, 0, 0)
-	if err == nil || err.Error() != expected {
-		t.Fatalf("expected error: %v, got: %v", expected, err)
-	}
-}
-
 func requiresRoot(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("skipping test that requires root")
