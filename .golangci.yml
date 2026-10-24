@@ -3,6 +3,7 @@ version: "2"
 linters:
   enable:
     - errorlint
+    - gocritic
     - unconvert
     - unparam
   exclusions:
@@ -11,6 +12,8 @@ linters:
       - comments
       - std-error-handling
   settings:
+    gocritic:
+      enable-all: true
     staticcheck:
       # Enable all options, with some exceptions.
       # For defaults, see https://golangci-lint.run/usage/linters/#staticcheck

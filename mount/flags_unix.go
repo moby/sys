@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var flags = map[string]struct {
+var knownFlags = map[string]struct {
 	clear bool
 	flag  int
 }{
@@ -85,7 +85,7 @@ func MergeTmpfsOptions(options []string) ([]string, error) {
 		if option == "defaults" {
 			continue
 		}
-		if f, ok := flags[option]; ok && f.flag != 0 {
+		if f, ok := knownFlags[option]; ok && f.flag != 0 {
 			// There is only one propagation mode
 			key := f.flag
 			if propagationFlags[option] {
@@ -115,25 +115,25 @@ func MergeTmpfsOptions(options []string) ([]string, error) {
 
 // Parse fstab type mount options into mount() flags
 // and device specific data
-func parseOptions(options string) (int, string) {
+func parseOptions(options string) (flags int, data string) {
 	var (
-		flag int
-		data []string
+		flag     int
+		flagData []string
 	)
 
 	for _, o := range strings.Split(options, ",") {
-		// If the option does not exist in the flags table or the flag
+		// If the option does not exist in the knownFlags table or the flag
 		// is not supported on the platform,
 		// then it is a data value for a specific fs type
-		if f, exists := flags[o]; exists && f.flag != 0 {
+		if f, exists := knownFlags[o]; exists && f.flag != 0 {
 			if f.clear {
 				flag &= ^f.flag
 			} else {
 				flag |= f.flag
 			}
 		} else {
-			data = append(data, o)
+			flagData = append(flagData, o)
 		}
 	}
-	return flag, strings.Join(data, ",")
+	return flag, strings.Join(flagData, ",")
 }

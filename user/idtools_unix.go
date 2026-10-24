@@ -21,8 +21,7 @@ func mkdirAs(path string, mode os.FileMode, uid, gid int, mkAll bool, opts ...Mk
 		return err
 	}
 
-	stat, err := os.Stat(path)
-	if err == nil {
+	if stat, err := os.Stat(path); err == nil {
 		if !stat.IsDir() {
 			return &os.PathError{Op: "mkdir", Path: path, Err: syscall.ENOTDIR}
 		}
@@ -52,20 +51,20 @@ func mkdirAs(path string, mode os.FileMode, uid, gid int, mkAll bool, opts ...Mk
 			if dirPath == "/" {
 				break
 			}
-			if _, err = os.Stat(dirPath); os.IsNotExist(err) {
+			if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 				paths = append(paths, dirPath)
 			}
 		}
-		if err = os.MkdirAll(path, mode); err != nil {
+		if err := os.MkdirAll(path, mode); err != nil {
 			return err
 		}
-	} else if err = os.Mkdir(path, mode); err != nil {
+	} else if err := os.Mkdir(path, mode); err != nil {
 		return err
 	}
 	// even if it existed, we will chown the requested path + any subpaths that
 	// didn't exist when we called MkdirAll
 	for _, pathComponent := range paths {
-		if err = setPermissions(pathComponent, mode, uid, gid, nil); err != nil {
+		if err := setPermissions(pathComponent, mode, uid, gid, nil); err != nil {
 			return err
 		}
 	}
@@ -106,11 +105,11 @@ func LoadIdentityMapping(name string) (IdentityMapping, error) {
 		return IdentityMapping{}, fmt.Errorf("could not get user for username %s: %w", name, err)
 	}
 
-	subuidRanges, err := lookupSubRangesFile("/etc/subuid", usr)
+	subuidRanges, err := lookupSubRangesFile("/etc/subuid", &usr)
 	if err != nil {
 		return IdentityMapping{}, err
 	}
-	subgidRanges, err := lookupSubRangesFile("/etc/subgid", usr)
+	subgidRanges, err := lookupSubRangesFile("/etc/subgid", &usr)
 	if err != nil {
 		return IdentityMapping{}, err
 	}
@@ -121,7 +120,7 @@ func LoadIdentityMapping(name string) (IdentityMapping, error) {
 	}, nil
 }
 
-func lookupSubRangesFile(path string, usr User) ([]IDMap, error) {
+func lookupSubRangesFile(path string, usr *User) ([]IDMap, error) {
 	uidstr := strconv.Itoa(usr.Uid)
 	rangeList, err := ParseSubIDFileFilter(path, func(sid SubID) bool {
 		return sid.Name == usr.Name || sid.Name == uidstr
@@ -133,7 +132,7 @@ func lookupSubRangesFile(path string, usr User) ([]IDMap, error) {
 		return nil, fmt.Errorf("no subuid ranges found for user %q", usr.Name)
 	}
 
-	idMap := []IDMap{}
+	idMap := make([]IDMap, 0, len(rangeList))
 
 	var containerID int64
 	for _, idrange := range rangeList {
@@ -142,7 +141,7 @@ func lookupSubRangesFile(path string, usr User) ([]IDMap, error) {
 			ParentID: idrange.SubID,
 			Count:    idrange.Count,
 		})
-		containerID = containerID + idrange.Count
+		containerID += idrange.Count
 	}
 	return idMap, nil
 }
