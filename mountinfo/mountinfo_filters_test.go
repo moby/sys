@@ -41,6 +41,8 @@ func TestParentsFilter(t *testing.T) {
 		{path: "/a/b", mountPoint: "/a/b", shouldSkip: false},
 		{path: "/a/b", mountPoint: "/a/b/c", shouldSkip: true},
 		{path: "/a/b", mountPoint: "/b", shouldSkip: true},
+		{path: "/aa", mountPoint: "/a", shouldSkip: true},
+		{path: "/a/bb", mountPoint: "/a/b", shouldSkip: true},
 		{path: "/", mountPoint: "/", shouldSkip: false},
 		{path: "/", mountPoint: "/a", shouldSkip: true},
 	}
