@@ -1,6 +1,6 @@
 module github.com/moby/sys/user
 
-go 1.18
+go 1.24
 
 require golang.org/x/sys v0.1.0
 
