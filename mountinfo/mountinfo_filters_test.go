@@ -12,6 +12,9 @@ func TestPrefixFilter(t *testing.T) {
 		{prefix: "/a", mountPoint: "/a/b", shouldSkip: false},
 		{prefix: "/a", mountPoint: "/aa", shouldSkip: true},
 		{prefix: "/a", mountPoint: "/aa/b", shouldSkip: true},
+		{prefix: "/", mountPoint: "/", shouldSkip: false},
+		{prefix: "/", mountPoint: "/a", shouldSkip: false},
+		{prefix: "/", mountPoint: "/a/b", shouldSkip: false},
 
 		// invalid prefix: prefix path must be cleaned and have no trailing slash
 		{prefix: "/a/", mountPoint: "/a", shouldSkip: true},

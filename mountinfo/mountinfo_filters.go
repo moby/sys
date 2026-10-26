@@ -23,7 +23,7 @@ type FilterFunc func(*Info) (skip, stop bool)
 // "/foo" and "/foo/bar", and discards "/foobar".
 func PrefixFilter(prefix string) FilterFunc {
 	return func(m *Info) (bool, bool) {
-		skip := !strings.HasPrefix(m.Mountpoint+"/", prefix+"/")
+		skip := prefix != "/" && !strings.HasPrefix(m.Mountpoint+"/", prefix+"/")
 		return skip, false
 	}
 }
