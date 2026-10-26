@@ -5,6 +5,13 @@ from https://github.com/syndtr/gocapability/commit/42c35b4376354fd5.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+* [Load] now reads ambient and bounding capabilities of the current thread,
+  rather than of the main thread. Before this change, when called from a
+  thread other than the main one, it could return wrong values. (#273)
+
 ## [0.5.0] - 2026-10-23
 
 ### Breaking changes
@@ -111,6 +118,7 @@ This is an initial release since the fork.
 [ListKnown]: https://pkg.go.dev/github.com/moby/sys/capability#ListKnown
 [ListSupported]: https://pkg.go.dev/github.com/moby/sys/capability#ListSupported
 [List]: https://pkg.go.dev/github.com/moby/sys/capability#List
+[Load]: https://pkg.go.dev/github.com/moby/sys/capability#Capabilities.Load
 [NewFile2]: https://pkg.go.dev/github.com/moby/sys/capability#NewFile2
 [NewFile]: https://pkg.go.dev/github.com/moby/sys/capability#NewFile
 [NewPid2]: https://pkg.go.dev/github.com/moby/sys/capability#NewPid2
