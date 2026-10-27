@@ -78,7 +78,7 @@ func parseUserArg(name string) (*userArg, error) {
 	if name == "" {
 		return nil, nil
 	}
-	uid, isNumeric, err := parseNumeric(name)
+	uid, isNumeric, err := parseMaybeNumeric(name)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func parseGroupArg(name string) (*groupArg, error) {
 	if name == "" {
 		return nil, nil
 	}
-	gid, isNumeric, err := parseNumeric(name)
+	gid, isNumeric, err := parseMaybeNumeric(name)
 	if err != nil {
 		return nil, err
 	}

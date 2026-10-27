@@ -235,33 +235,41 @@ func GetExecUserPath(userSpec string, defaults *ExecUser, passwdPath, groupPath 
 	return GetExecUser(userSpec, defaults, passwd, group)
 }
 
-// parseNumeric parses the given UID or GID value to an integer and within
-// the minID - maxID range.
+// parseNumeric parses a UID or GID as an integer within the minID - maxID range.
 //
 // While the Linux kernel allows the max UID to be MaxUint32 - 2,
 // and the OCI Runtime Spec has no definition about the max UID, we require
 // the UID to be <= MaxInt32.
 //
 // See https://github.com/containerd/containerd/commit/de1341c201ffb0effebbf51d00376181968c8779
-func parseNumeric(val string) (int, bool, error) {
+func parseNumeric(val string) (int, error) {
 	id, err := strconv.Atoi(val)
 	if err != nil {
-		if errors.Is(err, strconv.ErrSyntax) {
-			// Discard the error, because non-numeric values are expected
-			// when passing a username or group-name.
-			return 0, false, nil
-		}
 		if errors.Is(err, strconv.ErrRange) {
-			return 0, true, ErrRange
+			return 0, ErrRange
 		}
-		// Other errors ("invalid base", "invalid bit size"); should never
-		// happen with strconv.Atoi.
-		return 0, false, err
+		return 0, err
 	}
 	if id < minID || id > maxID {
-		return 0, true, ErrRange
+		return 0, ErrRange
 	}
-	return id, true, nil
+	return id, nil
+}
+
+// parseMaybeNumeric parses a UID or GID as a numeric ID, or indicates
+// that the value should be interpreted as a username or group name.
+//
+// Non-numeric values are expected when passing a username or group name,
+// so syntax errors are ignored. The boolean indicates whether the value
+// was interpreted as a numeric ID.
+func parseMaybeNumeric(val string) (int, bool, error) {
+	id, err := parseNumeric(val)
+	if errors.Is(err, strconv.ErrSyntax) {
+		// Discard the error, because non-numeric values are expected
+		// when passing a username or group-name.
+		return 0, false, nil
+	}
+	return id, true, err
 }
 
 // GetExecUser parses a user specification string (using the passwd and group
