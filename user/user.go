@@ -59,9 +59,9 @@ type IDMap struct {
 
 // parseLine parses a colon-separated record into the provided fields.
 //
-// Empty lines and records with invalid or missing numeric fields are
-// considered malformed and return ok=false. Other parsing errors return
-// ok=true with a non-nil error.
+// Empty lines and records with missing, invalid, or out-of-range numeric
+// fields are considered malformed and return ok=false. Other parsing
+// errors return ok=true with a non-nil error.
 //
 // This follows the behavior of glibc's passwd and group parsers, which
 // skip malformed records when reading entries.
@@ -78,12 +78,11 @@ func parseLine(line []byte, v ...any) (ok bool, _ error) {
 // parseParts parses the provided parts into the corresponding fields.
 //
 // Missing fields are treated as empty. Empty string fields are accepted,
-// but missing, empty, or non-numeric integer fields make the record invalid
-// (ok=false). Numeric values outside the supported range return an error
-// with ok=true.
+// but missing, empty, non-numeric, or out-of-range integer fields make
+// the record invalid (ok=false).
 //
-// The returned boolean indicates whether the record was accepted for
-// parsing, not whether parsing succeeded.
+// The returned boolean indicates whether the record is valid, not whether
+// parsing succeeded. Other parsing errors return ok=true with a non-nil error.
 func parseParts(parts [][]byte, fields ...any) (ok bool, _ error) {
 	if len(parts) == 0 {
 		return false, nil
@@ -110,6 +109,9 @@ func parseParts(parts [][]byte, fields ...any) (ok bool, _ error) {
 				if errors.Is(err, strconv.ErrSyntax) {
 					return false, fmt.Errorf("parsing integer field %d: %q is not numeric: %w", i, p, strconv.ErrSyntax)
 				}
+				if errors.Is(err, strconv.ErrRange) {
+					return false, fmt.Errorf("parsing integer field %d: %w", i, err)
+				}
 				return true, fmt.Errorf("parsing integer field %d: %w", i, err)
 			}
 			*e = n
@@ -118,6 +120,9 @@ func parseParts(parts [][]byte, fields ...any) (ok bool, _ error) {
 			if err != nil {
 				if errors.Is(err, strconv.ErrSyntax) {
 					return false, fmt.Errorf("parsing integer field %d: %q is not numeric: %w", i, p, strconv.ErrSyntax)
+				}
+				if errors.Is(err, strconv.ErrRange) {
+					return false, fmt.Errorf("parsing integer field %d: %w", i, err)
 				}
 				return true, fmt.Errorf("parsing integer field %d: %w", i, err)
 			}
@@ -177,9 +182,12 @@ func ParsePasswdFilter(r io.Reader, filter func(User) bool) ([]User, error) {
 		//  adm:x:3:4:adm:/var/adm:/bin/false
 		p := User{}
 		ok, err := parseLine(line, &p.Name, &p.Pass, &p.Uid, &p.Gid, &p.Gecos, &p.Home, &p.Shell)
-		if err != nil || !ok {
+		if !ok {
 			// Skip malformed and empty lines, and don't consider them.
 			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("invalid line %q: %w", line, err)
 		}
 
 		if filter == nil || filter(p) {
@@ -240,9 +248,12 @@ func ParseGroupFilter(r io.Reader, filter func(Group) bool) ([]Group, error) {
 		//  adm:x:4:root,adm,daemon
 		p := Group{}
 		ok, err := parseLine(line, &p.Name, &p.Pass, &p.Gid, &p.List)
-		if err != nil || !ok {
+		if !ok {
 			// Skip malformed and empty lines, and don't consider them.
 			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("invalid line %q: %w", line, err)
 		}
 
 		if filter == nil || filter(p) {
@@ -563,9 +574,12 @@ func ParseSubIDFilter(r io.Reader, filter func(SubID) bool) ([]SubID, error) {
 		// see: man 5 subuid
 		p := SubID{}
 		ok, err := parseLine(line, &p.Name, &p.SubID, &p.Count)
-		if err != nil || !ok {
+		if !ok {
 			// Skip malformed and empty lines, and don't consider them.
 			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("invalid line %q: %w", line, err)
 		}
 
 		if filter == nil || filter(p) {
@@ -615,9 +629,12 @@ func ParseIDMapFilter(r io.Reader, filter func(IDMap) bool) ([]IDMap, error) {
 		// see: man 7 user_namespaces
 		p := IDMap{}
 		ok, err := parseParts(bytes.Fields(line), &p.ID, &p.ParentID, &p.Count)
-		if err != nil || !ok {
+		if !ok {
 			// Skip malformed and empty lines, and don't consider them.
 			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("invalid line %q: %w", line, err)
 		}
 
 		if filter == nil || filter(p) {

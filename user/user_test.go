@@ -315,6 +315,25 @@ func TestParseGroupFilterDevZero(t *testing.T) {
 	}
 }
 
+func TestParseSubIDFilterOverflow(t *testing.T) {
+	entries, err := ParseSubIDFilter(strings.NewReader(`
+	first:100000:65536
+	bad:9223372036854775808:65536
+	last:200000:65536
+	`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []SubID{
+		{Name: "first", SubID: 100000, Count: 65536},
+		{Name: "last", SubID: 200000, Count: 65536},
+	}
+	if !reflect.DeepEqual(entries, expected) {
+		t.Fatalf("unexpected entries:\ngot:  %#v\nwant: %#v", entries, expected)
+	}
+}
+
 func TestGetExecUser(t *testing.T) {
 	const passwdContent = `
 root:x:0:0:root user:/root:/bin/bash
