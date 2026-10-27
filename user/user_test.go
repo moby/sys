@@ -168,9 +168,9 @@ func TestParseGroupFileCapsReads(t *testing.T) {
 	}
 }
 
-// TestTestParseGroupFileCapsReadsonRegularFile verifies that non-regular files
+// TestParseGroupFileCapsReadsonRegularFile verifies that non-regular files
 // are refused.
-func TestTestParseGroupFileCapsReadsonRegularFile(t *testing.T) {
+func TestParseGroupFileCapsReadsonRegularFile(t *testing.T) {
 	fileName := t.TempDir()
 	_, err := ParseGroupFile(fileName)
 	if err == nil {
