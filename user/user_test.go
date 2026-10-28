@@ -21,81 +21,65 @@ func TestParseLine(t *testing.T) {
 		d, e int
 	)
 
-	_, err := parseLine([]byte(""), &a, &b)
-	if err != nil {
-		t.Fatal(err)
+	if !parseLine([]byte(""), &a, &b) {
+		t.Fatal("unexpected malformed record")
 	}
 	if a != "" || b != "" {
 		t.Fatalf("a and b should be empty ('%v', '%v')", a, b)
 	}
 
-	_, err = parseLine([]byte("a"), &a, &b)
-	if err != nil {
-		t.Fatal(err)
+	if !parseLine([]byte("a"), &a, &b) {
+		t.Fatal("unexpected malformed record")
 	}
 	if a != "a" || b != "" {
 		t.Fatalf("a should be 'a' and b should be empty ('%v', '%v')", a, b)
 	}
 
-	_, err = parseLine([]byte("bad boys:corny cows"), &a, &b)
-	if err != nil {
-		t.Fatal(err)
+	if !parseLine([]byte("bad boys:corny cows"), &a, &b) {
+		t.Fatal("unexpected malformed record")
 	}
 	if a != "bad boys" || b != "corny cows" {
 		t.Fatalf("a should be 'bad boys' and b should be 'corny cows' ('%v', '%v')", a, b)
 	}
 
-	ok, err := parseLine([]byte(""), &c)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ok {
-		t.Fatalf("ok should be false for empty lines")
+	if !parseLine([]byte(""), &c) {
+		t.Fatal("unexpected malformed record")
 	}
 	if len(c) != 0 {
 		t.Fatalf("c should be empty (%#v)", c)
 	}
 
-	_, err = parseLine([]byte("d,e,f:g:h:i,j,k"), &c, &a, &b, &c)
-	if err != nil {
-		t.Fatal(err)
+	if !parseLine([]byte("d,e,f:g:h:i,j,k"), &c, &a, &b, &c) {
+		t.Fatal("unexpected malformed record")
 	}
 	if a != "g" || b != "h" || len(c) != 3 || c[0] != "i" || c[1] != "j" || c[2] != "k" {
 		t.Fatalf("a should be 'g', b should be 'h', and c should be ['i','j','k'] ('%v', '%v', '%#v')", a, b, c)
 	}
 
-	_, err = parseLine([]byte("::::::::::"), &a, &b, &c)
-	if err != nil {
-		t.Fatal(err)
+	if !parseLine([]byte("::::::::::"), &a, &b, &c) {
+		t.Fatal("unexpected malformed record")
 	}
 	if a != "" || b != "" || len(c) != 0 {
 		t.Fatalf("a, b, and c should all be empty ('%v', '%v', '%#v')", a, b, c)
 	}
 
-	_, err = parseLine([]byte("not a number"), &d)
-	if err == nil {
-		t.Fatal("expected an error")
+	if parseLine([]byte("not a number"), &d) {
+		t.Fatal("expected malformed record")
 	}
 	if d != 0 {
 		t.Fatalf("d should be 0 (%v)", d)
 	}
 
-	_, err = parseLine([]byte("b:12:c"), &a, &d, &b)
-	if err != nil {
-		t.Fatal(err)
+	if !parseLine([]byte("b:12:c"), &a, &d, &b) {
+		t.Fatal("unexpected malformed record")
 	}
 	if a != "b" || b != "c" || d != 12 {
 		t.Fatalf("a should be 'b' and b should be 'c', and d should be 12 ('%v', '%v', %v)", a, b, d)
 	}
 
 	// partial line, missing numeric value
-	ok, err = parseLine([]byte("a:b:3"), &a, &b, &d, &e)
-	if ok {
+	if parseLine([]byte("a:b:3"), &a, &b, &d, &e) {
 		t.Fatal("expected malformed record")
-	}
-	expErr := `parsing integer field 3: "" is not numeric: invalid syntax`
-	if err == nil || err.Error() != expErr {
-		t.Fatalf("expected '%s', got: %v", expErr, err)
 	}
 	if a != "a" || b != "b" || d != 3 || e != 0 {
 		t.Fatalf("expected 'a', 'b', 3, 0, got ('%v', '%v', '%v', '%v')", a, b, d, e)
