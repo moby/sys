@@ -299,10 +299,23 @@ func TestParseGroupFilterDevZero(t *testing.T) {
 	}
 }
 
-func TestParseSubIDFilterOverflow(t *testing.T) {
+func TestParseSubIDFilter(t *testing.T) {
 	entries, err := ParseSubIDFilter(strings.NewReader(`
 	first:100000:65536
 	bad:9223372036854775808:65536
+	negative:-1:65536
+	negative:100000:-1
+	toolarge:4294967296:1
+	toolarge:4294967295:2
+	toolarge:0:4294967296
+	:100000:65536
+	short:100000
+	long:100000:65536:
+	empty::65536
+	empty:100000:
+	zero:300000:0
+	maxid:4294967295:1
+	full:0:4294967295
 	last:200000:65536
 	`), nil)
 	if err != nil {
@@ -311,6 +324,9 @@ func TestParseSubIDFilterOverflow(t *testing.T) {
 
 	expected := []SubID{
 		{Name: "first", SubID: 100000, Count: 65536},
+		{Name: "zero", SubID: 300000, Count: 0},
+		{Name: "maxid", SubID: 4294967295, Count: 1},
+		{Name: "full", SubID: 0, Count: 4294967295},
 		{Name: "last", SubID: 200000, Count: 65536},
 	}
 	if !reflect.DeepEqual(entries, expected) {
