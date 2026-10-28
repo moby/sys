@@ -141,6 +141,12 @@ this is just some garbage data
 			Pass: "x",
 		},
 		{
+			Name: "adm",
+			Pass: "x",
+			Uid:  2147483648,
+			Gid:  4,
+		},
+		{
 			Name: "valid",
 			Pass: "x",
 			Uid:  42,
@@ -185,6 +191,12 @@ this is just some garbage data
 		},
 		{
 			Pass: "x",
+			List: []string{},
+		},
+		{
+			Name: "invalid",
+			Pass: "x",
+			Gid:  2147483648,
 			List: []string{},
 		},
 		{
