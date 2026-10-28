@@ -750,6 +750,12 @@ this is just some garbage data
 			hasError: true,
 		},
 		{
+			doc:      "empty group name",
+			groups:   []string{"adm", ""},
+			expected: nil,
+			hasError: true,
+		},
+		{
 			doc:      "group entry with out-of-range gid",
 			groups:   []string{"toolarge"},
 			expected: nil,
