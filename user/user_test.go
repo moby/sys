@@ -153,6 +153,7 @@ invalid:x:abc:
 invalid:x:2147483648:
 invalid:x:-1:
 valid:x:42:user1,user2
+spaces:x:43: user1 , user2,,user3,
 this is just some garbage data
 `+largeGroup()), nil)
 	if err != nil {
@@ -181,6 +182,12 @@ this is just some garbage data
 			Pass: "x",
 			Gid:  42,
 			List: []string{"user1", "user2"},
+		},
+		{
+			Name: "spaces",
+			Pass: "x",
+			Gid:  43,
+			List: []string{"user1", "user2", "user3"},
 		},
 	}
 
@@ -326,7 +333,7 @@ this is just some garbage data
 	groupContent := `
 root:x:0:root
 adm:x:43:
-grp:x:1234:root,adm,user7456
+grp:x:1234:root, adm, user7456
 444:x:555:111
 odd:x:444:
 2147483647:x:1235:
