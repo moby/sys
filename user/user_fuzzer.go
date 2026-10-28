@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func IsDivisbleBy(n int, divisibleby int) bool {
+func IsDivisbleBy(n, divisibleby int) bool {
 	return (n % divisibleby) == 0
 }
 
