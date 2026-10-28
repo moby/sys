@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -338,18 +340,41 @@ func (c *capsV3) String() (ret string) {
 	return mkString(c, BOUNDING)
 }
 
+// openStatus opens the status file of the current thread (rather than of
+// the thread group leader, as /proc/self/status is), since capabilities
+// are per-thread.
+func openStatus() (*os.File, error) {
+	f, err := os.Open("/proc/thread-self/status")
+	if !errors.Is(err, os.ErrNotExist) {
+		return f, err
+	}
+	// Pre-3.17 kernel, no /proc/thread-self.
+	f, err = os.Open("/proc/self/task/" + strconv.Itoa(syscall.Gettid()) + "/status")
+	if !errors.Is(err, os.ErrNotExist) {
+		return f, err
+	}
+	// Our pid namespace doesn't match the one of /proc mount.
+	return os.Open("/proc/self/status")
+}
+
 func (c *capsV3) Load() (err error) {
+	if c.hdr.pid == 0 {
+		// Make sure capget and status file refer to the same thread.
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+	}
+
 	err = capget(&c.hdr, &c.data[0])
 	if err != nil {
 		return
 	}
 
-	path := "/proc/self/status"
-	if c.hdr.pid != 0 {
-		path = fmt.Sprintf("/proc/%d/status", c.hdr.pid)
+	var f *os.File
+	if c.hdr.pid == 0 {
+		f, err = openStatus()
+	} else {
+		f, err = os.Open(fmt.Sprintf("/proc/%d/status", c.hdr.pid))
 	}
-
-	f, err := os.Open(path)
 	if err != nil {
 		return
 	}

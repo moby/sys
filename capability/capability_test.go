@@ -16,6 +16,16 @@ import (
 	. "github.com/moby/sys/capability"
 )
 
+func init() {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") == "1" {
+		// Lock the main goroutine to the main thread, so that tests
+		// (which run in separate goroutines) never run on the main
+		// thread. This ensures per-thread capabilities are handled
+		// properly.
+		runtime.LockOSThread()
+	}
+}
+
 func requirePCapSet(t testing.TB) {
 	t.Helper()
 	pid, err := NewPid2(0)
