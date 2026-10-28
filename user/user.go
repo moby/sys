@@ -57,32 +57,76 @@ type IDMap struct {
 	Count    int64
 }
 
-func parseLine(line []byte, v ...any) {
-	parseParts(bytes.Split(line, []byte(":")), v...)
+// parseLine parses a colon-separated record into the provided fields.
+//
+// Empty lines and records with missing, invalid, or out-of-range numeric
+// fields are considered malformed and return ok=false. Other parsing
+// errors return ok=true with a non-nil error.
+//
+// This follows the behavior of glibc's passwd and group parsers, which
+// skip malformed records when reading entries.
+//
+// See https://sources.debian.org/src/glibc/2.42-13/nss/nss_fgetent_r.c/
+func parseLine(line []byte, v ...any) (ok bool, _ error) {
+	line = bytes.TrimSpace(line)
+	if len(line) == 0 {
+		return false, nil
+	}
+	return parseParts(bytes.Split(line, []byte(":")), v...)
 }
 
-func parseParts(parts [][]byte, v ...any) {
+// parseParts parses the provided parts into the corresponding fields.
+//
+// Missing fields are treated as empty. Empty string fields are accepted,
+// but missing, empty, non-numeric, or out-of-range integer fields make
+// the record invalid (ok=false).
+//
+// The returned boolean indicates whether the record is valid, not whether
+// parsing succeeded. Other parsing errors return ok=true with a non-nil error.
+func parseParts(parts [][]byte, fields ...any) (ok bool, _ error) {
 	if len(parts) == 0 {
-		return
+		return false, nil
 	}
 
-	for i, p := range parts {
-		// Ignore cases where we don't have enough fields to populate the arguments.
-		// Some configuration files like to misbehave.
-		if len(v) <= i {
-			break
+	for i, v := range fields {
+		// Treat missing fields as empty. Like glibc, empty string fields are
+		// accepted, but missing or invalid numeric fields make the record invalid.
+		//
+		// See https://sources.debian.org/src/glibc/2.42-13/nss/fgetpwent_r.c/#L150-L165
+		var p []byte
+		if i < len(parts) {
+			p = parts[i]
 		}
 
 		// Use the type of the argument to figure out how to parse it, scanf() style.
 		// This is legit.
-		switch e := v[i].(type) {
+		switch e := v.(type) {
 		case *string:
 			*e = string(p)
 		case *int:
-			// "numbers", with conversion errors ignored because of some misbehaving configuration files.
-			*e, _ = strconv.Atoi(string(p))
+			n, err := strconv.Atoi(string(p))
+			if err != nil {
+				if errors.Is(err, strconv.ErrSyntax) {
+					return false, fmt.Errorf("parsing integer field %d: %q is not numeric: %w", i, p, strconv.ErrSyntax)
+				}
+				if errors.Is(err, strconv.ErrRange) {
+					return false, fmt.Errorf("parsing integer field %d: %w", i, err)
+				}
+				return true, fmt.Errorf("parsing integer field %d: %w", i, err)
+			}
+			*e = n
 		case *int64:
-			*e, _ = strconv.ParseInt(string(p), 10, 64)
+			n, err := strconv.ParseInt(string(p), 10, 64)
+			if err != nil {
+				if errors.Is(err, strconv.ErrSyntax) {
+					return false, fmt.Errorf("parsing integer field %d: %q is not numeric: %w", i, p, strconv.ErrSyntax)
+				}
+				if errors.Is(err, strconv.ErrRange) {
+					return false, fmt.Errorf("parsing integer field %d: %w", i, err)
+				}
+				return true, fmt.Errorf("parsing integer field %d: %w", i, err)
+			}
+			*e = n
 		case *[]string:
 			// Comma-separated lists.
 			if len(p) != 0 {
@@ -95,6 +139,7 @@ func parseParts(parts [][]byte, v ...any) {
 			panic(fmt.Sprintf("parseLine only accepts {*string, *int, *int64, *[]string} as arguments! %#v is not a pointer!", e))
 		}
 	}
+	return true, nil
 }
 
 func ParsePasswdFile(path string) ([]User, error) {
@@ -136,7 +181,14 @@ func ParsePasswdFilter(r io.Reader, filter func(User) bool) ([]User, error) {
 		//  root:x:0:0:root:/root:/bin/bash
 		//  adm:x:3:4:adm:/var/adm:/bin/false
 		p := User{}
-		parseLine(line, &p.Name, &p.Pass, &p.Uid, &p.Gid, &p.Gecos, &p.Home, &p.Shell)
+		ok, err := parseLine(line, &p.Name, &p.Pass, &p.Uid, &p.Gid, &p.Gecos, &p.Home, &p.Shell)
+		if !ok {
+			// Skip malformed and empty lines, and don't consider them.
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("invalid line %q: %w", line, err)
+		}
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
@@ -195,7 +247,14 @@ func ParseGroupFilter(r io.Reader, filter func(Group) bool) ([]Group, error) {
 		//  root:x:0:root
 		//  adm:x:4:root,adm,daemon
 		p := Group{}
-		parseLine(line, &p.Name, &p.Pass, &p.Gid, &p.List)
+		ok, err := parseLine(line, &p.Name, &p.Pass, &p.Gid, &p.List)
+		if !ok {
+			// Skip malformed and empty lines, and don't consider them.
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("invalid line %q: %w", line, err)
+		}
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
@@ -235,33 +294,50 @@ func GetExecUserPath(userSpec string, defaults *ExecUser, passwdPath, groupPath 
 	return GetExecUser(userSpec, defaults, passwd, group)
 }
 
-// parseNumeric parses the given UID or GID value to an integer and within
-// the minID - maxID range.
+// validateID checks whether a UID or GID is within the supported range,
+// returning [ErrRange] if it is not.
 //
-// While the Linux kernel allows the max UID to be MaxUint32 - 2,
-// and the OCI Runtime Spec has no definition about the max UID, we require
-// the UID to be <= MaxInt32.
+// While the Linux kernel allows UIDs up to MaxUint32 - 2, and the OCI
+// Runtime Spec does not define a maximum UID, we restrict IDs to MaxInt32
+// for compatibility with 32-bit systems and OCI runtimes.
 //
 // See https://github.com/containerd/containerd/commit/de1341c201ffb0effebbf51d00376181968c8779
-func parseNumeric(val string) (int, bool, error) {
+func validateID(id int) error {
+	if id < minID || id > maxID {
+		return ErrRange
+	}
+	return nil
+}
+
+// parseNumeric parses a UID or GID as an integer within the supported range.
+func parseNumeric(val string) (int, error) {
 	id, err := strconv.Atoi(val)
 	if err != nil {
-		if errors.Is(err, strconv.ErrSyntax) {
-			// Discard the error, because non-numeric values are expected
-			// when passing a username or group-name.
-			return 0, false, nil
-		}
 		if errors.Is(err, strconv.ErrRange) {
-			return 0, true, ErrRange
+			return 0, ErrRange
 		}
-		// Other errors ("invalid base", "invalid bit size"); should never
-		// happen with strconv.Atoi.
-		return 0, false, err
+		return 0, err
 	}
-	if id < minID || id > maxID {
-		return 0, true, ErrRange
+	if err := validateID(id); err != nil {
+		return 0, err
 	}
-	return id, true, nil
+	return id, nil
+}
+
+// parseMaybeNumeric parses a UID or GID as a numeric ID, or indicates
+// that the value should be interpreted as a username or group name.
+//
+// Non-numeric values are expected when passing a username or group name,
+// so syntax errors are ignored. The boolean indicates whether the value
+// was interpreted as a numeric ID.
+func parseMaybeNumeric(val string) (int, bool, error) {
+	id, err := parseNumeric(val)
+	if errors.Is(err, strconv.ErrSyntax) {
+		// Discard the error, because non-numeric values are expected
+		// when passing a username or group-name.
+		return 0, false, nil
+	}
+	return id, true, err
 }
 
 // GetExecUser parses a user specification string (using the passwd and group
@@ -423,8 +499,8 @@ func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, err
 		for _, g := range groups {
 			if ag.matches(g) {
 				// take the first matched group as correct
-				if g.Gid < minID || g.Gid > maxID {
-					return nil, ErrRange
+				if err := validateID(g.Gid); err != nil {
+					return nil, err
 				}
 				gidMap[g.Gid] = struct{}{}
 				found = true
@@ -497,7 +573,14 @@ func ParseSubIDFilter(r io.Reader, filter func(SubID) bool) ([]SubID, error) {
 
 		// see: man 5 subuid
 		p := SubID{}
-		parseLine(line, &p.Name, &p.SubID, &p.Count)
+		ok, err := parseLine(line, &p.Name, &p.SubID, &p.Count)
+		if !ok {
+			// Skip malformed and empty lines, and don't consider them.
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("invalid line %q: %w", line, err)
+		}
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
@@ -545,7 +628,14 @@ func ParseIDMapFilter(r io.Reader, filter func(IDMap) bool) ([]IDMap, error) {
 
 		// see: man 7 user_namespaces
 		p := IDMap{}
-		parseParts(bytes.Fields(line), &p.ID, &p.ParentID, &p.Count)
+		ok, err := parseParts(bytes.Fields(line), &p.ID, &p.ParentID, &p.Count)
+		if !ok {
+			// Skip malformed and empty lines, and don't consider them.
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("invalid line %q: %w", line, err)
+		}
 
 		if filter == nil || filter(p) {
 			out = append(out, p)
