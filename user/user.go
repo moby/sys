@@ -441,6 +441,9 @@ func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, err
 		if err != nil {
 			return nil, err
 		}
+		if groupArg == nil {
+			return nil, errors.New("empty group name")
+		}
 		addtlGroups = append(addtlGroups, *groupArg)
 	}
 
