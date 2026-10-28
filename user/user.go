@@ -102,11 +102,15 @@ func parseParts(parts [][]byte, fields ...any) bool {
 			}
 			*e = n
 		case *[]string:
-			// Comma-separated lists.
-			if len(p) != 0 {
-				*e = strings.Split(string(p), ",")
-			} else {
-				*e = []string{}
+			// Comma-separated lists. Like glibc, skip leading whitespace
+			// (but keep trailing one), and drop empty elements.
+			//
+			// See https://sources.debian.org/src/glibc/2.42-13/nss/nss_files/files-parse.c/#L278-L291
+			*e = []string{}
+			for s := range strings.SplitSeq(string(p), ",") {
+				if s = strings.TrimLeft(s, " \t\n\v\f\r"); s != "" {
+					*e = append(*e, s)
+				}
 			}
 		default:
 			// Someone goof'd when writing code using this function. Scream so they can hear us.
