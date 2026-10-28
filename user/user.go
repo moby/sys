@@ -235,13 +235,22 @@ func GetExecUserPath(userSpec string, defaults *ExecUser, passwdPath, groupPath 
 	return GetExecUser(userSpec, defaults, passwd, group)
 }
 
-// parseNumeric parses a UID or GID as an integer within the minID - maxID range.
+// validateID checks whether a UID or GID is within the supported range,
+// returning [ErrRange] if it is not.
 //
-// While the Linux kernel allows the max UID to be MaxUint32 - 2,
-// and the OCI Runtime Spec has no definition about the max UID, we require
-// the UID to be <= MaxInt32.
+// While the Linux kernel allows UIDs up to MaxUint32 - 2, and the OCI
+// Runtime Spec does not define a maximum UID, we restrict IDs to MaxInt32
+// for compatibility with 32-bit systems and OCI runtimes.
 //
 // See https://github.com/containerd/containerd/commit/de1341c201ffb0effebbf51d00376181968c8779
+func validateID(id int) error {
+	if id < minID || id > maxID {
+		return ErrRange
+	}
+	return nil
+}
+
+// parseNumeric parses a UID or GID as an integer within the supported range.
 func parseNumeric(val string) (int, error) {
 	id, err := strconv.Atoi(val)
 	if err != nil {
@@ -250,8 +259,8 @@ func parseNumeric(val string) (int, error) {
 		}
 		return 0, err
 	}
-	if id < minID || id > maxID {
-		return 0, ErrRange
+	if err := validateID(id); err != nil {
+		return 0, err
 	}
 	return id, nil
 }
@@ -431,8 +440,8 @@ func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, err
 		for _, g := range groups {
 			if ag.matches(g) {
 				// take the first matched group as correct
-				if g.Gid < minID || g.Gid > maxID {
-					return nil, ErrRange
+				if err := validateID(g.Gid); err != nil {
+					return nil, err
 				}
 				gidMap[g.Gid] = struct{}{}
 				found = true
