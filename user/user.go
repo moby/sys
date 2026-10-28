@@ -68,7 +68,8 @@ func parseLine(line []byte, v ...any) bool {
 //
 // Missing fields are treated as empty. Empty string fields are accepted,
 // but missing, empty, non-numeric, or out-of-range integer fields make
-// the record invalid.
+// the record invalid. For *int fields (UIDs and GIDs), the valid range
+// is the one checked by [validateID].
 //
 // This follows the behavior of glibc's passwd and group parsers, which
 // skip malformed records when reading entries.
@@ -88,7 +89,8 @@ func parseParts(parts [][]byte, fields ...any) bool {
 		case *string:
 			*e = string(p)
 		case *int:
-			n, err := strconv.Atoi(string(p))
+			// The only *int fields are UIDs and GIDs.
+			n, err := parseNumeric(string(p))
 			if err != nil {
 				return false
 			}
@@ -463,9 +465,6 @@ func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, err
 		for _, g := range groups {
 			if ag.matches(g) {
 				// take the first matched group as correct
-				if err := validateID(g.Gid); err != nil {
-					return nil, err
-				}
 				gidMap[g.Gid] = struct{}{}
 				found = true
 				break

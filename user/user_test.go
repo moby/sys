@@ -95,6 +95,8 @@ adm:x:3
 adm:x::4:
 adm:x:abc:4:
 adm:x:2147483648:4:
+adm:x:-1:4:
+adm:x:3:-1:
 valid:x:42:43::/home/valid:
 this is just some garbage data
 `), nil)
@@ -125,12 +127,6 @@ this is just some garbage data
 			Pass: "x",
 		},
 		{
-			Name: "adm",
-			Pass: "x",
-			Uid:  2147483648,
-			Gid:  4,
-		},
-		{
 			Name: "valid",
 			Pass: "x",
 			Uid:  42,
@@ -153,6 +149,7 @@ invalid:x:
 invalid:x::
 invalid:x:abc:
 invalid:x:2147483648:
+invalid:x:-1:
 valid:x:42:user1,user2
 this is just some garbage data
 `+largeGroup()), nil)
@@ -175,12 +172,6 @@ this is just some garbage data
 		},
 		{
 			Pass: "x",
-			List: []string{},
-		},
-		{
-			Name: "invalid",
-			Pass: "x",
-			Gid:  2147483648,
 			List: []string{},
 		},
 		{
