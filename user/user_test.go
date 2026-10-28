@@ -98,6 +98,8 @@ adm:x:2147483648:4:
 adm:x:-1:4:
 adm:x:3:-1:
 valid:x:42:43::/home/valid:
+#commented:x:0:0::/root:/bin/sh
+  # commented:x:0:0::/root:/bin/sh
 this is just some garbage data
 `), nil)
 	if err != nil {

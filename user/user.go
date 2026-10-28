@@ -144,8 +144,9 @@ func ParsePasswdFilter(r io.Reader, filter func(User) bool) ([]User, error) {
 	)
 
 	for s.Scan() {
+		// Skip blank lines and comments, like glibc does (see ParseGroupFilter).
 		line := bytes.TrimSpace(s.Bytes())
-		if len(line) == 0 {
+		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
 
