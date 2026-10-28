@@ -102,11 +102,13 @@ func parseParts(parts [][]byte, fields ...any) bool {
 			}
 			*e = n
 		case *[]string:
-			// Comma-separated lists.
-			if len(p) != 0 {
-				*e = strings.Split(string(p), ",")
-			} else {
-				*e = []string{}
+			// Comma-separated lists. Like glibc, skip whitespace around
+			// the elements, and drop empty ones.
+			*e = []string{}
+			for s := range strings.SplitSeq(string(p), ",") {
+				if s = strings.TrimSpace(s); s != "" {
+					*e = append(*e, s)
+				}
 			}
 		default:
 			// Someone goof'd when writing code using this function. Scream so they can hear us.
