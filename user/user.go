@@ -507,6 +507,20 @@ func GetAdditionalGroupsPath(additionalGroups []string, groupPath string) ([]int
 	return GetAdditionalGroups(additionalGroups, group)
 }
 
+// maxSubID is the maximum subordinate ID (maxof(id_t) in shadow-utils).
+const maxSubID = 1<<32 - 1
+
+// valid reports whether s is a valid subordinate ID range. It follows the
+// checks done by shadow-utils: the name must not be empty, and the range
+// must fit into 32-bit IDs.
+//
+// See https://github.com/shadow-maint/shadow/blob/24bc15eac4dcdec9c73c59988fe030b44a98c3de/lib/subordinateio.c#L93-L127
+func (s SubID) valid() bool {
+	return s.Name != "" &&
+		s.SubID >= 0 && s.SubID <= maxSubID &&
+		s.Count >= 0 && s.Count <= min(maxSubID+1-s.SubID, maxSubID)
+}
+
 func ParseSubIDFile(path string) ([]SubID, error) {
 	return ParseSubIDFileFilter(path, nil)
 }
@@ -541,8 +555,12 @@ func ParseSubIDFilter(r io.Reader, filter func(SubID) bool) ([]SubID, error) {
 		}
 
 		// see: man 5 subuid
+		//  name:subid:count
+		// Name:SubID:Count
+		//  user:100000:65536
+		parts := bytes.Split(line, []byte(":"))
 		p := SubID{}
-		if !parseLine(line, &p.Name, &p.SubID, &p.Count) {
+		if len(parts) != 3 || !parseParts(parts, &p.Name, &p.SubID, &p.Count) || !p.valid() {
 			// Skip malformed lines.
 			continue
 		}
