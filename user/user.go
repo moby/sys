@@ -398,6 +398,9 @@ func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, err
 		if err != nil {
 			return nil, err
 		}
+		if groupArg == nil {
+			return nil, fmt.Errorf("unable to find group %s: %w", ag, ErrNoGroupEntries)
+		}
 		addtlGroups = append(addtlGroups, *groupArg)
 	}
 

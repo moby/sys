@@ -591,6 +591,12 @@ this is just some garbage data
 			hasError: true,
 		},
 		{
+			doc:      "empty group name",
+			groups:   []string{"adm", ""},
+			expected: nil,
+			hasError: true,
+		},
+		{
 			doc:      "group with numeric id",
 			groups:   []string{"43"},
 			expected: []int{43},
