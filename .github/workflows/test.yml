@@ -17,6 +17,9 @@ on: [push, pull_request]
 
 jobs:
   test:
+    permissions:
+      contents: read
+      id-token: write # needed for CodeCov; https://github.com/codecov/codecov-action/blob/v7.1.1/README.md#using-oidc
     strategy:
       matrix:
         go-version: [1.18.x, oldstable, stable]
@@ -91,7 +94,7 @@ jobs:
     - name: Send to Codecov
       uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}  # used to upload coverage reports: https://github.com/moby/buildkit/pull/4660#issue-2142122533
+        use_oidc: true
 
   codespell:
     runs-on: ubuntu-24.04
