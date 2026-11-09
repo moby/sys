@@ -303,13 +303,21 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 
 	// Convert usr and grp to be numeric, so we don't have to execute
 	// Atoi *twice* for each iteration over lines.
-	userArg, err := parseUserArg(usr)
-	if err != nil {
-		return nil, err
+	var userArg *userArg
+	if usr != "" {
+		var err error
+		userArg, err = parseUserArg(usr)
+		if err != nil {
+			return nil, err
+		}
 	}
-	groupArg, err := parseGroupArg(grp)
-	if err != nil {
-		return nil, err
+	var groupArg *groupArg
+	if grp != "" {
+		var err error
+		groupArg, err = parseGroupArg(grp)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Find the matching user.
@@ -397,9 +405,6 @@ func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, err
 		groupArg, err := parseGroupArg(ag)
 		if err != nil {
 			return nil, err
-		}
-		if groupArg == nil {
-			return nil, fmt.Errorf("unable to find group %s: %w", ag, ErrNoGroupEntries)
 		}
 		addtlGroups = append(addtlGroups, *groupArg)
 	}

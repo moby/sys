@@ -71,12 +71,9 @@ type userArg struct {
 }
 
 // parseUserArg parses a user argument as either a user name or UID.
-//
-// If name is empty, parseUserArg returns "nil, nil" to indicate that no user
-// argument was specified.
 func parseUserArg(name string) (*userArg, error) {
 	if name == "" {
-		return nil, nil
+		return nil, errors.New("empty user")
 	}
 	uid, isNumeric, err := parseNumeric(name)
 	if err != nil {
@@ -102,12 +99,9 @@ type groupArg struct {
 }
 
 // parseGroupArg parses a group argument as either a group name or GID.
-//
-// If name is empty, parseGroupArg returns "nil, nil" to indicate that no group
-// argument was specified.
 func parseGroupArg(name string) (*groupArg, error) {
 	if name == "" {
-		return nil, nil
+		return nil, errors.New("empty group")
 	}
 	gid, isNumeric, err := parseNumeric(name)
 	if err != nil {
