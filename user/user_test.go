@@ -18,47 +18,71 @@ func TestParseLine(t *testing.T) {
 	var (
 		a, b string
 		c    []string
-		d    int
+		d, e int
 	)
 
-	parseLine([]byte(""), &a, &b)
+	if !parseLine([]byte(""), &a, &b) {
+		t.Fatal("unexpected malformed record")
+	}
 	if a != "" || b != "" {
 		t.Fatalf("a and b should be empty ('%v', '%v')", a, b)
 	}
 
-	parseLine([]byte("a"), &a, &b)
+	if !parseLine([]byte("a"), &a, &b) {
+		t.Fatal("unexpected malformed record")
+	}
 	if a != "a" || b != "" {
 		t.Fatalf("a should be 'a' and b should be empty ('%v', '%v')", a, b)
 	}
 
-	parseLine([]byte("bad boys:corny cows"), &a, &b)
+	if !parseLine([]byte("bad boys:corny cows"), &a, &b) {
+		t.Fatal("unexpected malformed record")
+	}
 	if a != "bad boys" || b != "corny cows" {
 		t.Fatalf("a should be 'bad boys' and b should be 'corny cows' ('%v', '%v')", a, b)
 	}
 
-	parseLine([]byte(""), &c)
+	if !parseLine([]byte(""), &c) {
+		t.Fatal("unexpected malformed record")
+	}
 	if len(c) != 0 {
 		t.Fatalf("c should be empty (%#v)", c)
 	}
 
-	parseLine([]byte("d,e,f:g:h:i,j,k"), &c, &a, &b, &c)
+	if !parseLine([]byte("d,e,f:g:h:i,j,k"), &c, &a, &b, &c) {
+		t.Fatal("unexpected malformed record")
+	}
 	if a != "g" || b != "h" || len(c) != 3 || c[0] != "i" || c[1] != "j" || c[2] != "k" {
 		t.Fatalf("a should be 'g', b should be 'h', and c should be ['i','j','k'] ('%v', '%v', '%#v')", a, b, c)
 	}
 
-	parseLine([]byte("::::::::::"), &a, &b, &c)
+	if !parseLine([]byte("::::::::::"), &a, &b, &c) {
+		t.Fatal("unexpected malformed record")
+	}
 	if a != "" || b != "" || len(c) != 0 {
 		t.Fatalf("a, b, and c should all be empty ('%v', '%v', '%#v')", a, b, c)
 	}
 
-	parseLine([]byte("not a number"), &d)
+	if parseLine([]byte("not a number"), &d) {
+		t.Fatal("expected malformed record")
+	}
 	if d != 0 {
 		t.Fatalf("d should be 0 (%v)", d)
 	}
 
-	parseLine([]byte("b:12:c"), &a, &d, &b)
+	if !parseLine([]byte("b:12:c"), &a, &d, &b) {
+		t.Fatal("unexpected malformed record")
+	}
 	if a != "b" || b != "c" || d != 12 {
 		t.Fatalf("a should be 'b' and b should be 'c', and d should be 12 ('%v', '%v', %v)", a, b, d)
+	}
+
+	// partial line, missing numeric value
+	if parseLine([]byte("a:b:3"), &a, &b, &d, &e) {
+		t.Fatal("expected malformed record")
+	}
+	if a != "a" || b != "b" || d != 3 || e != 0 {
+		t.Fatalf("expected 'a', 'b', 3, 0, got ('%v', '%v', '%v', '%v')", a, b, d, e)
 	}
 }
 
@@ -66,19 +90,55 @@ func TestParsePasswdFilter(t *testing.T) {
 	users, err := ParsePasswdFilter(strings.NewReader(`
 root:x:0:0:root:/root:/bin/bash
 adm:x:3:4:adm:/var/adm:/bin/false
+:x:0:0:::
+adm:x:3
+adm:x::4:
+adm:x:abc:4:
+adm:x:2147483648:4:
+adm:x:-1:4:
+adm:x:3:-1:
+valid:x:42:43::/home/valid:
+#commented:x:0:0::/root:/bin/sh
+  # commented:x:0:0::/root:/bin/sh
 this is just some garbage data
 `), nil)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	if len(users) != 3 {
-		t.Fatalf("Expected 3 users, got %v", len(users))
+
+	expected := []User{
+		{
+			Name:  "root",
+			Pass:  "x",
+			Uid:   0,
+			Gid:   0,
+			Gecos: "root",
+			Home:  "/root",
+			Shell: "/bin/bash",
+		},
+		{
+			Name:  "adm",
+			Pass:  "x",
+			Uid:   3,
+			Gid:   4,
+			Gecos: "adm",
+			Home:  "/var/adm",
+			Shell: "/bin/false",
+		},
+		{
+			Pass: "x",
+		},
+		{
+			Name: "valid",
+			Pass: "x",
+			Uid:  42,
+			Gid:  43,
+			Home: "/home/valid",
+		},
 	}
-	if users[0].Uid != 0 || users[0].Name != "root" {
-		t.Fatalf("Expected users[0] to be 0 - root, got %v - %v", users[0].Uid, users[0].Name)
-	}
-	if users[1].Uid != 3 || users[1].Name != "adm" {
-		t.Fatalf("Expected users[1] to be 3 - adm, got %v - %v", users[1].Uid, users[1].Name)
+
+	if !reflect.DeepEqual(users, expected) {
+		t.Fatalf("unexpected users:\ngot:  %#v\nwant: %#v", users, expected)
 	}
 }
 
@@ -86,19 +146,62 @@ func TestParseGroupFilter(t *testing.T) {
 	groups, err := ParseGroupFilter(strings.NewReader(`
 root:x:0:root
 adm:x:4:root,adm,daemon
+:x:0:
+invalid:x:
+invalid:x::
+invalid:x:abc:
+invalid:x:2147483648:
+invalid:x:-1:
+valid:x:42:user1,user2
+spaces:x:43: user1 , user2,,user3,
 this is just some garbage data
 `+largeGroup()), nil)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	if len(groups) != 4 {
-		t.Fatalf("Expected 4 groups, got %v", len(groups))
+
+	expected := []Group{
+		{
+			Name: "root",
+			Pass: "x",
+			Gid:  0,
+			List: []string{"root"},
+		},
+		{
+			Name: "adm",
+			Pass: "x",
+			Gid:  4,
+			List: []string{"root", "adm", "daemon"},
+		},
+		{
+			Pass: "x",
+			List: []string{},
+		},
+		{
+			Name: "valid",
+			Pass: "x",
+			Gid:  42,
+			List: []string{"user1", "user2"},
+		},
+		{
+			Name: "spaces",
+			Pass: "x",
+			Gid:  43,
+			List: []string{"user1", "user2", "user3"},
+		},
 	}
-	if groups[0].Gid != 0 || groups[0].Name != "root" || len(groups[0].List) != 1 {
-		t.Fatalf("Expected groups[0] to be 0 - root - 1 member, got %v - %v - %v", groups[0].Gid, groups[0].Name, len(groups[0].List))
+
+	if len(groups) != len(expected)+1 {
+		t.Fatalf("expected %d groups, got %d", len(expected)+1, len(groups))
 	}
-	if groups[1].Gid != 4 || groups[1].Name != "adm" || len(groups[1].List) != 3 {
-		t.Fatalf("Expected groups[1] to be 4 - adm - 3 members, got %v - %v - %v", groups[1].Gid, groups[1].Name, len(groups[1].List))
+	if !reflect.DeepEqual(groups[:len(expected)], expected) {
+		t.Fatalf("unexpected groups:\ngot:  %#v\nwant: %#v", groups[:len(expected)], expected)
+	}
+
+	// The last entry is generated by largeGroup().
+	large := groups[len(expected)]
+	if large.Name != "largegroup" || large.Pass != "x" || large.Gid != 1000 || len(large.List) != 7500 {
+		t.Fatalf("unexpected large group: name=%q pass=%q gid=%d members=%d", large.Name, large.Pass, large.Gid, len(large.List))
 	}
 }
 
@@ -168,9 +271,9 @@ func TestParseGroupFileCapsReads(t *testing.T) {
 	}
 }
 
-// TestTestParseGroupFileCapsReadsonRegularFile verifies that non-regular files
+// TestParseGroupFileCapsReadsonRegularFile verifies that non-regular files
 // are refused.
-func TestTestParseGroupFileCapsReadsonRegularFile(t *testing.T) {
+func TestParseGroupFileCapsReadsonRegularFile(t *testing.T) {
 	fileName := t.TempDir()
 	_, err := ParseGroupFile(fileName)
 	if err == nil {
@@ -196,6 +299,41 @@ func TestParseGroupFilterDevZero(t *testing.T) {
 	}
 }
 
+func TestParseSubIDFilter(t *testing.T) {
+	entries, err := ParseSubIDFilter(strings.NewReader(`
+	first:100000:65536
+	bad:9223372036854775808:65536
+	negative:-1:65536
+	negative:100000:-1
+	toolarge:4294967296:1
+	toolarge:4294967295:2
+	toolarge:0:4294967296
+	:100000:65536
+	short:100000
+	long:100000:65536:
+	empty::65536
+	empty:100000:
+	zero:300000:0
+	maxid:4294967295:1
+	full:0:4294967295
+	last:200000:65536
+	`), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []SubID{
+		{Name: "first", SubID: 100000, Count: 65536},
+		{Name: "zero", SubID: 300000, Count: 0},
+		{Name: "maxid", SubID: 4294967295, Count: 1},
+		{Name: "full", SubID: 0, Count: 4294967295},
+		{Name: "last", SubID: 200000, Count: 65536},
+	}
+	if !reflect.DeepEqual(entries, expected) {
+		t.Fatalf("unexpected entries:\ngot:  %#v\nwant: %#v", entries, expected)
+	}
+}
+
 func TestGetExecUser(t *testing.T) {
 	const passwdContent = `
 root:x:0:0:root user:/root:/bin/bash
@@ -211,7 +349,7 @@ this is just some garbage data
 	groupContent := `
 root:x:0:root
 adm:x:43:
-grp:x:1234:root,adm,user7456
+grp:x:1234:root, adm, user7456
 444:x:555:111
 odd:x:444:
 2147483647:x:1235:
@@ -631,6 +769,12 @@ this is just some garbage data
 		{
 			doc:      "maxInt64+1 group must not resolve as group name",
 			groups:   []string{"9223372036854775808"},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			doc:      "empty group name",
+			groups:   []string{"adm", ""},
 			expected: nil,
 			hasError: true,
 		},
