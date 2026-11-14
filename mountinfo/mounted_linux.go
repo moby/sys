@@ -18,13 +18,18 @@ import (
 // be handled separately using e.g. errors.Is(err, fs.ErrNotExist).
 //
 // This function is only available on Linux. When available (since kernel
-// v5.6), openat2(2) syscall is used to reliably detect all mounts. Otherwise,
-// the implementation falls back to using stat(2), which can reliably detect
-// normal (but not bind) mounts.
+// v5.8), statx(2) syscall is used to reliably detect all mounts, followed
+// by openat2(2) (since kernel v5.6). Otherwise, the implementation falls back
+// to using stat(2), which can reliably detect normal (but not bind) mounts.
 func MountedFast(path string) (mounted, sure bool, err error) {
 	// Root is always mounted.
 	if path == string(os.PathSeparator) {
 		return true, true, nil
+	}
+
+	// Fastest path: statx, which does not need a normalized path.
+	if mounted, ok := tryMountedByStatx(path); ok {
+		return mounted, true, nil
 	}
 
 	path, err = normalizePath(path)
@@ -33,6 +38,58 @@ func MountedFast(path string) (mounted, sure bool, err error) {
 	}
 	mounted, sure, err = mountedFast(path)
 	return
+}
+
+// mountedByStatx is a method of detecting a mount that works for all kinds
+// of mounts (incl. bind mounts), but requires a recent (v5.8+) linux kernel.
+// Unlike other mountedBy* methods, it does not require path to be normalized
+// (symlinks are resolved by the kernel), but it must be absolute and clean.
+func mountedByStatx(path string) (bool, error) {
+	var st unix.Statx_t
+	const (
+		flags = unix.AT_NO_AUTOMOUNT // Do not trigger an automount.
+		mask  = unix.STATX_INO
+	)
+
+	err := unix.Statx(unix.AT_FDCWD, path, flags, mask, &st)
+	if err == nil && st.Attributes_mask&unix.STATX_ATTR_MOUNT_ROOT != 0 {
+		if st.Attributes&unix.STATX_ATTR_MOUNT_ROOT != 0 {
+			return true, nil
+		}
+		// Root is always mounted, but in a chroot it may not be a mount
+		// root. Since the path is not normalized, it may resolve to root
+		// (e.g. a symlink to /), so compare it with root.
+		var rst unix.Statx_t
+		err = unix.Statx(unix.AT_FDCWD, "/", 0, mask, &rst)
+		if err == nil {
+			return st.Dev_major == rst.Dev_major && st.Dev_minor == rst.Dev_minor && st.Ino == rst.Ino, nil
+		}
+		path = "/"
+	}
+	if err == nil {
+		err = unix.ENOTSUP // STATX_ATTR_MOUNT_ROOT not supported.
+	}
+	return false, &os.PathError{Op: "statx", Path: path, Err: err}
+}
+
+// tryMountedByStatx is a wrapper around mountedByStatx which accepts any path.
+// If ok is false, other methods need to be used. In particular, no errors are
+// returned: in case of an error (such as non-existent path), a fallback method
+// should return the error to the caller.
+func tryMountedByStatx(path string) (mounted, ok bool) {
+	// Do not use normalizePath here as it is relatively slow, and
+	// statx resolves symlinks anyway. Yet, make the path absolute and
+	// clean, so ".." is treated the same way as by normalizePath.
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return false, false
+	}
+	// Root is always mounted (even if it is not a mount root, e.g. chroot).
+	if path == string(os.PathSeparator) {
+		return true, true
+	}
+	mounted, err = mountedByStatx(path)
+	return mounted, err == nil
 }
 
 // mountedByOpenat2 is a method of detecting a mount that works for all kinds
@@ -87,6 +144,11 @@ func mountedFast(path string) (mounted, sure bool, err error) {
 }
 
 func mounted(path string) (bool, error) {
+	// Fastest path: statx, which does not need a normalized path.
+	if mounted, ok := tryMountedByStatx(path); ok {
+		return mounted, nil
+	}
+
 	path, err := normalizePath(path)
 	if err != nil {
 		return false, err
