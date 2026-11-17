@@ -293,6 +293,7 @@ func TestCommandContext(t *testing.T) {
 		doc        string
 		cmdAndArgs []string
 		cancel     bool
+		timeout    time.Duration
 		expOut     string
 		expError   error
 		expExit    int
@@ -321,6 +322,7 @@ func TestCommandContext(t *testing.T) {
 		{
 			doc:        "context timeout",
 			cmdAndArgs: []string{testReExec3},
+			timeout:    100 * time.Millisecond,
 			expOut:     "Hello test-reexec3",
 			expError:   testError,
 		},
@@ -334,8 +336,13 @@ func TestCommandContext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.doc, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
+			if tc.timeout != 0 {
+				var cancelTimeout context.CancelFunc
+				ctx, cancelTimeout = context.WithTimeout(ctx, tc.timeout)
+				defer cancelTimeout()
+			}
 
 			cmd := reexec.CommandContext(ctx, tc.cmdAndArgs...)
 			if !reflect.DeepEqual(cmd.Args, tc.cmdAndArgs) {
