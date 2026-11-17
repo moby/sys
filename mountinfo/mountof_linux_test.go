@@ -153,3 +153,76 @@ func BenchmarkMountOf(b *testing.B) {
 		})
 	}
 }
+
+func TestMountOfPropagation(t *testing.T) {
+	makeMount := func(t *testing.T, src, fstype string, flags uintptr) string {
+		t.Helper()
+		dir := t.TempDir()
+		tMount(t, src, dir, fstype, flags)
+		return dir
+	}
+	setPropagation := func(t *testing.T, dir string, flags uintptr) {
+		t.Helper()
+		if err := unix.Mount("", dir, "", flags, ""); err != nil {
+			t.Fatal(&os.PathError{Op: "mount", Path: dir, Err: err})
+		}
+	}
+
+	shared := makeMount(t, "tmpfs", "tmpfs", 0)
+	setPropagation(t, shared, unix.MS_SHARED)
+	sharedInfo, err := MountOf(shared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	group, ok := sharedInfo.PeerGroup()
+	if !ok {
+		t.Fatalf("expected %s to be shared, got %+v", shared, sharedInfo)
+	}
+
+	slave := makeMount(t, shared, "", unix.MS_BIND)
+	setPropagation(t, slave, unix.MS_SLAVE)
+
+	slaveShared := makeMount(t, shared, "", unix.MS_BIND)
+	setPropagation(t, slaveShared, unix.MS_SLAVE)
+	setPropagation(t, slaveShared, unix.MS_SHARED)
+
+	unbindable := makeMount(t, "tmpfs", "tmpfs", 0)
+	setPropagation(t, unbindable, unix.MS_UNBINDABLE)
+
+	private := makeMount(t, "tmpfs", "tmpfs", 0)
+	setPropagation(t, private, unix.MS_PRIVATE)
+
+	for _, tc := range []struct {
+		desc       string
+		path       string
+		shared     bool
+		master     int // 0 means not a slave
+		unbindable bool
+	}{
+		{desc: "shared", path: shared, shared: true},
+		{desc: "slave", path: slave, master: group},
+		{desc: "slave and shared", path: slaveShared, shared: true, master: group},
+		{desc: "unbindable", path: unbindable, unbindable: true},
+		{desc: "private", path: private},
+	} {
+		for name, fn := range mountOfImpls() {
+			info, err := fn(tc.path)
+			if err != nil {
+				t.Fatalf("%s: %s: %v", tc.desc, name, err)
+			}
+			if _, ok := info.PeerGroup(); ok != tc.shared {
+				t.Errorf("%s: %s: PeerGroup: got %v, want %v (%q)", tc.desc, name, ok, tc.shared, info.Optional)
+			}
+			master, _ := info.Master()
+			if master != tc.master {
+				t.Errorf("%s: %s: Master: got %d, want %d (%q)", tc.desc, name, master, tc.master, info.Optional)
+			}
+			if _, ok := info.PropagateFrom(); ok {
+				t.Errorf("%s: %s: PropagateFrom: unexpected (%q)", tc.desc, name, info.Optional)
+			}
+			if got := info.Unbindable(); got != tc.unbindable {
+				t.Errorf("%s: %s: Unbindable: got %v, want %v (%q)", tc.desc, name, got, tc.unbindable, info.Optional)
+			}
+		}
+	}
+}

@@ -2,6 +2,8 @@ package mountinfo
 
 import (
 	"os"
+	"strconv"
+	"strings"
 )
 
 // GetMounts retrieves a list of mounts for the current running process,
@@ -95,4 +97,63 @@ type Info struct {
 	//
 	// It is 0 when not available (e.g. when Info is parsed from mountinfo).
 	ParentUniqueID uint64
+}
+
+// optionalField returns the value of a tag from the Optional field
+// (e.g. "1" for tag "shared" if Optional is "shared:1 master:2"),
+// and whether the tag is present.
+func (i *Info) optionalField(tag string) (string, bool) {
+	for f := range strings.FieldsSeq(i.Optional) {
+		name, val, _ := strings.Cut(f, ":")
+		if name == tag {
+			return val, true
+		}
+	}
+	return "", false
+}
+
+// optionalID is like optionalField, but parses the value as an integer ID.
+func (i *Info) optionalID(tag string) (int, bool) {
+	val, ok := i.optionalField(tag)
+	if !ok {
+		return 0, false
+	}
+	id, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, false
+	}
+	return id, true
+}
+
+// PeerGroup returns the ID of the peer group, and true, if the mount is
+// shared (i.e. its Optional field contains "shared:ID"). Otherwise, it
+// returns 0 and false.
+//
+// For more information on mount propagation, see mount_namespaces(7).
+func (i *Info) PeerGroup() (int, bool) {
+	return i.optionalID("shared")
+}
+
+// Master returns the ID of the peer group from which the mount receives
+// propagation events, and true, if the mount is a slave (i.e. its Optional
+// field contains "master:ID"). Otherwise, it returns 0 and false.
+//
+// Note that a mount can be both a slave and shared, in which case both
+// PeerGroup and Master return true.
+func (i *Info) Master() (int, bool) {
+	return i.optionalID("master")
+}
+
+// PropagateFrom returns the ID of the closest dominant peer group under the
+// process's root directory, and true, if it differs from the one returned
+// by Master (i.e. its Optional field contains "propagate_from:ID").
+// Otherwise, it returns 0 and false.
+func (i *Info) PropagateFrom() (int, bool) {
+	return i.optionalID("propagate_from")
+}
+
+// Unbindable reports whether the mount is unbindable.
+func (i *Info) Unbindable() bool {
+	_, ok := i.optionalField("unbindable")
+	return ok
 }
