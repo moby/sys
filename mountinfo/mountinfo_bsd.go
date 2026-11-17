@@ -53,3 +53,7 @@ func mounted(path string) (bool, error) {
 	// Fallback to parsing mountinfo
 	return mountedByMountinfo(path)
 }
+
+func mountOf(path string) (*Info, error) {
+	return mountOfByParentsSlow(path)
+}

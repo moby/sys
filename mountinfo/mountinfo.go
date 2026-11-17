@@ -24,6 +24,23 @@ func Mounted(path string) (bool, error) {
 	return mounted(path)
 }
 
+// MountOf returns information about the mount which path belongs to (i.e.
+// the mount containing the file or directory the path refers to, after
+// resolving all symlinks). If several mounts are stacked on the same mount
+// point, the topmost (i.e. visible) one is returned.
+//
+// This is a more efficient and correct alternative to calling GetMounts with
+// ParentsFilter and choosing an entry with the longest mount point. On Linux
+// 6.13+, it uses statx(2) and statmount(2) and avoids reading mountinfo.
+//
+// If a non-existent path is specified, an appropriate error is returned,
+// which can be checked using errors.Is(err, fs.ErrNotExist).
+//
+// This function is not implemented on Windows.
+func MountOf(path string) (*Info, error) {
+	return mountOf(path)
+}
+
 // Info reveals information about a particular mounted filesystem. This
 // struct is populated from the content in the /proc/<pid>/mountinfo file,
 // or using statmount(2).

@@ -16,3 +16,7 @@ func parseMountTable(_ FilterFunc) ([]*Info, error) {
 func mounted(path string) (bool, error) {
 	return false, errNotImplemented
 }
+
+func mountOf(_ string) (*Info, error) {
+	return nil, errNotImplemented
+}

@@ -13,6 +13,9 @@ import (
 // in Info (because the kernel is too old, or the syscall is blocked by seccomp).
 var errStatmountUnsupported = errors.New("statmount not supported")
 
+// noStatmount disables the use of statmount (for testing fallback code).
+var noStatmount bool
+
 const (
 	// statmountMask is a set of statmount fields needed to fill in Info.
 	statmountMask = unix.STATMOUNT_SB_BASIC | unix.STATMOUNT_MNT_BASIC |
@@ -35,6 +38,9 @@ const (
 // statmount, or does not support all the fields needed to fill in Info
 // (which requires Linux 6.13+).
 func statmount(id uint64) (*Info, error) {
+	if noStatmount {
+		return nil, errStatmountUnsupported
+	}
 	st, err := unix.Statmount(&unix.MntIdReq{
 		Id:    id,
 		Param: statmountMask | unix.STATMOUNT_SUPPORTED_MASK,
