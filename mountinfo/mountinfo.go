@@ -25,7 +25,8 @@ func Mounted(path string) (bool, error) {
 }
 
 // Info reveals information about a particular mounted filesystem. This
-// struct is populated from the content in the /proc/<pid>/mountinfo file.
+// struct is populated from the content in the /proc/<pid>/mountinfo file,
+// or using statmount(2).
 type Info struct {
 	// ID is a unique identifier of the mount (may be reused after umount).
 	ID int
@@ -64,4 +65,17 @@ type Info struct {
 
 	// VFSOptions is a comma-separated list of superblock options.
 	VFSOptions string
+
+	// UniqueID is a unique identifier of the mount (never reused), as
+	// returned by statmount(2) and statx(2) with STATX_MNT_ID_UNIQUE
+	// (Linux 6.8+). Note that it differs from ID.
+	//
+	// It is 0 when not available (e.g. when Info is parsed from mountinfo).
+	UniqueID uint64
+
+	// ParentUniqueID is a unique identifier of the parent mount (or of
+	// self for the root of this mount namespace's mount tree).
+	//
+	// It is 0 when not available (e.g. when Info is parsed from mountinfo).
+	ParentUniqueID uint64
 }
