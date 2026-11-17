@@ -57,3 +57,7 @@ func mounted(path string) (bool, error) {
 func mountOf(path string) (*Info, error) {
 	return mountOfByParentsSlow(path)
 }
+
+func submounts(path string) ([]*Info, error) {
+	return submountsByPrefixSlow(path)
+}

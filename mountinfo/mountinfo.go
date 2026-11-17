@@ -43,6 +43,23 @@ func MountOf(path string) (*Info, error) {
 	return mountOf(path)
 }
 
+// Submounts returns information about all mounts on path (including those
+// stacked on the same mount point) and under it, after resolving all symlinks
+// in path. The mounts are returned in the same order as GetMounts does.
+//
+// This is equivalent to GetMounts(PrefixFilter(path)), except path does not
+// have to be normalized. On Linux 6.13+, if path is a mount point, it uses
+// statx(2), listmount(2) and statmount(2) and avoids reading mountinfo,
+// which is much faster when there are many mounts in the system.
+//
+// If a non-existent path is specified, an appropriate error is returned,
+// which can be checked using errors.Is(err, fs.ErrNotExist).
+//
+// This function is not implemented on Windows.
+func Submounts(path string) ([]*Info, error) {
+	return submounts(path)
+}
+
 // Info reveals information about a particular mounted filesystem. This
 // struct is populated from the content in the /proc/<pid>/mountinfo file,
 // or using statmount(2).

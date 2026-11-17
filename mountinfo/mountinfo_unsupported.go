@@ -20,3 +20,7 @@ func mounted(path string) (bool, error) {
 func mountOf(_ string) (*Info, error) {
 	return nil, errNotImplemented
 }
+
+func submounts(_ string) ([]*Info, error) {
+	return nil, errNotImplemented
+}

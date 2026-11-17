@@ -84,3 +84,13 @@ func mountOfByParents(path string) (*Info, error) {
 	}
 	return res, nil
 }
+
+// submountsByPrefixSlow returns all mounts on path or under it,
+// using PrefixFilter. The path does not have to be normalized.
+func submountsByPrefixSlow(path string) ([]*Info, error) {
+	path, err := normalizePath(path)
+	if err != nil {
+		return nil, err
+	}
+	return GetMounts(PrefixFilter(path))
+}

@@ -14,3 +14,7 @@ func mounted(_ string) (bool, error) {
 func mountOf(_ string) (*Info, error) {
 	return nil, errors.ErrUnsupported
 }
+
+func submounts(_ string) ([]*Info, error) {
+	return nil, errors.ErrUnsupported
+}
