@@ -3,6 +3,7 @@
 package mountinfo
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -49,4 +50,47 @@ func mountedByMountinfo(path string) (bool, error) {
 	}
 
 	return len(entries) > 0, nil
+}
+
+// mountOfByParentsSlow is like mountOfByParents, but does not require path
+// to be normalized.
+func mountOfByParentsSlow(path string) (*Info, error) {
+	path, err := normalizePath(path)
+	if err != nil {
+		return nil, err
+	}
+	return mountOfByParents(path)
+}
+
+// mountOfByParents finds the mount which path belongs to, by looking for the
+// longest mount point which is a parent of path. The path must be normalized.
+func mountOfByParents(path string) (*Info, error) {
+	mounts, err := GetMounts(ParentsFilter(path))
+	if err != nil {
+		return nil, err
+	}
+	var res *Info
+	for _, m := range mounts {
+		// Several mounts can be stacked on the same mount point, and the
+		// last one is the topmost one (well, unless MOVE_MOUNT_BENEATH was
+		// used, which can only be figured out by statx + mount ID).
+		if res == nil || len(m.Mountpoint) >= len(res.Mountpoint) {
+			res = m
+		}
+	}
+	if res == nil {
+		// Should not happen, as / is always mounted.
+		return nil, fmt.Errorf("no mount found for %q", path)
+	}
+	return res, nil
+}
+
+// submountsByPrefixSlow returns all mounts on path or under it,
+// using PrefixFilter. The path does not have to be normalized.
+func submountsByPrefixSlow(path string) ([]*Info, error) {
+	path, err := normalizePath(path)
+	if err != nil {
+		return nil, err
+	}
+	return GetMounts(PrefixFilter(path))
 }
