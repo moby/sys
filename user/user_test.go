@@ -2,6 +2,7 @@ package user
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -271,16 +272,40 @@ func TestParseGroupFileCapsReads(t *testing.T) {
 	}
 }
 
-// TestParseGroupFileCapsReadsonRegularFile verifies that non-regular files
-// are refused.
-func TestParseGroupFileCapsReadsonRegularFile(t *testing.T) {
-	fileName := t.TempDir()
-	_, err := ParseGroupFile(fileName)
-	if err == nil {
-		t.Fatal("expected error")
+// TestParseGroupFileOpenErrors verifies that non-regular and missing files are rejected.
+func TestParseGroupFileOpenErrors(t *testing.T) {
+	tests := []struct {
+		doc      string
+		fileName string
+		expError error
+	}{
+		{
+			doc:      "directory",
+			fileName: t.TempDir(),
+			expError: errNotRegularFile,
+		},
+		{
+			doc:      "device",
+			fileName: "/dev/zero",
+			expError: errNotRegularFile,
+		},
+		{
+			doc:      "not found",
+			fileName: filepath.Join(t.TempDir(), "missing"),
+			expError: os.ErrNotExist,
+		},
 	}
-	if !strings.Contains(err.Error(), "not a regular file") {
-		t.Fatalf("unexpected error: %s", err)
+	for _, tc := range tests {
+		t.Run(tc.doc, func(t *testing.T) {
+			if tc.doc == "device" && runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+				t.Skip("depends on /dev/zero")
+			}
+
+			_, err := ParseGroupFile(tc.fileName)
+			if !errors.Is(err, tc.expError) {
+				t.Fatalf("expected error %v, got %v", tc.expError, err)
+			}
+		})
 	}
 }
 
