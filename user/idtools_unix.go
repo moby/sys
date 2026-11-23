@@ -43,11 +43,16 @@ func mkdirAs(path string, mode os.FileMode, uid, gid int, mkAll bool, opts ...Mk
 	}
 
 	if mkAll {
-		// walk back to "/" looking for directories which do not exist
-		// and add them to the paths array for chown after creation
-		for p := filepath.Dir(path); p != "/"; p = filepath.Dir(p) {
-			if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-				createdDirs = append(createdDirs, p)
+		if errors.Is(statErr, os.ErrNotExist) {
+			// Walk back to "/" looking for directories which do not exist
+			// and add them to the paths array for chown after creation.
+			// Stop at the first existing directory.
+			for p := filepath.Dir(path); p != "/"; p = filepath.Dir(p) {
+				if _, err := os.Stat(p); err == nil {
+					break
+				} else if errors.Is(err, os.ErrNotExist) {
+					createdDirs = append(createdDirs, p)
+				}
 			}
 		}
 		if err := os.MkdirAll(path, mode); err != nil {
