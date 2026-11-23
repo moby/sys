@@ -317,6 +317,8 @@ func TestParseGroupFilterDevZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = dn.Close() }()
+
 	const expErr = "bufio.Scanner: token too long"
 	_, err = ParseGroupFilter(dn, nil)
 	if err == nil || !strings.Contains(err.Error(), expErr) {
