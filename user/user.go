@@ -500,13 +500,16 @@ func GetAdditionalGroups(additionalGroups []string, group io.Reader) ([]int, err
 // that opens the groupPath given and gives it as an argument to
 // GetAdditionalGroups.
 func GetAdditionalGroupsPath(additionalGroups []string, groupPath string) ([]int, error) {
-	var group io.Reader
-
-	if groupFile, err := os.Open(groupPath); err == nil {
-		group = groupFile
-		defer groupFile.Close()
+	groupFile, err := openUserFile(groupPath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+		return GetAdditionalGroups(additionalGroups, nil)
 	}
-	return GetAdditionalGroups(additionalGroups, group)
+	defer func() { _ = groupFile.Close() }()
+
+	return GetAdditionalGroups(additionalGroups, groupFile)
 }
 
 // maxSubID is the maximum subordinate ID (maxof(id_t) in shadow-utils).

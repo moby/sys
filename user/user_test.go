@@ -991,6 +991,84 @@ func TestGetAdditionalGroupsNumeric(t *testing.T) {
 	}
 }
 
+func TestGetAdditionalGroupsPathCapsReads(t *testing.T) {
+	entry := []byte("beyond:x:42:\n")
+	for _, tc := range []struct {
+		name    string
+		size    int
+		wantErr bool
+	}{
+		{name: "below cap", size: 100},
+		{name: "exactly at cap", size: maxUserFileBytes},
+		{name: "past cap", size: maxUserFileBytes + 1, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fileName := filepath.Join(t.TempDir(), "etc-group")
+			data := append([]byte(nil), entry...)
+			data = append(data, bytes.Repeat([]byte("\n"), tc.size-len(entry))...)
+			if err := os.WriteFile(fileName, data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			gids, err := GetAdditionalGroupsPath([]string{"beyond"}, fileName)
+			if tc.wantErr {
+				if err == nil || !strings.Contains(err.Error(), "file exceeds") {
+					t.Fatalf("expected file size error, got %v", err)
+				}
+				if len(gids) != 0 {
+					t.Fatalf("unexpected partial results: %v", gids)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(gids, []int{42}) {
+				t.Fatalf("unexpected gids: got %v, want [42]", gids)
+			}
+		})
+	}
+}
+
+// TestGetAdditionalGroupsPathOpenErrors verifies that non-regular and missing
+// files are handled correctly.
+func TestGetAdditionalGroupsPathOpenErrors(t *testing.T) {
+	tempDir := t.TempDir()
+
+	tests := []struct {
+		doc      string
+		fileName string
+		expError error
+	}{
+		{
+			doc:      "directory",
+			fileName: tempDir,
+			expError: errNotRegularFile,
+		},
+		{
+			doc:      "device",
+			fileName: "/dev/zero",
+			expError: errNotRegularFile,
+		},
+		{
+			doc:      "not found",
+			fileName: filepath.Join(tempDir, "missing"),
+			expError: ErrNoGroupEntries,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.doc, func(t *testing.T) {
+			if tc.doc == "device" && runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+				t.Skip("depends on /dev/zero")
+			}
+
+			_, err := GetAdditionalGroupsPath([]string{"beyond"}, tc.fileName)
+			if !errors.Is(err, tc.expError) {
+				t.Fatalf("expected error %v, got %v", tc.expError, err)
+			}
+		})
+	}
+}
+
 // Generate a proper "largegroup" entry for group tests.
 func largeGroup() (res string) {
 	var b strings.Builder
