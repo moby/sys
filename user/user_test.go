@@ -483,6 +483,103 @@ func TestParseSubIDFilter(t *testing.T) {
 	}
 }
 
+// TestParseSubIDFileCapsReads asserts the boundary behavior of the read cap:
+// well below, ending exactly at, and past maxUserFileBytes.
+func TestParseSubIDFileCapsReads(t *testing.T) {
+	beyond := []byte("\nbeyond:100000:65536\n")
+
+	for _, tc := range []struct {
+		name      string
+		padBytes  int
+		expSubIDs []SubID
+		expErr    string
+	}{
+		{
+			name:      "pad below cap, beyond is parsed",
+			padBytes:  100,
+			expSubIDs: []SubID{{Name: "beyond", SubID: 100000, Count: 65536}},
+		},
+		{
+			name:      "beyond ends exactly at cap, is parsed",
+			padBytes:  maxUserFileBytes - len(beyond),
+			expSubIDs: []SubID{{Name: "beyond", SubID: 100000, Count: 65536}},
+		},
+		{
+			name:     "pad past cap, read errors out",
+			padBytes: maxUserFileBytes,
+			expErr:   "file exceeds",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			fileName := filepath.Join(tmpDir, "etc-subuid")
+
+			pad := bytes.Repeat([]byte("\n"), tc.padBytes)
+			data := append(pad, beyond...)
+
+			if err := os.WriteFile(fileName, data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			subids, err := ParseSubIDFile(fileName)
+			if tc.expErr != "" {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if !strings.Contains(err.Error(), tc.expErr) {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(subids, tc.expSubIDs) {
+				t.Fatalf("unexpected subids: got %v, want %v", subids, tc.expSubIDs)
+			}
+		})
+	}
+}
+
+// TestParseSubIDFileOpenErrors verifies that non-regular and missing files are rejected.
+func TestParseSubIDFileOpenErrors(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tests := []struct {
+		doc      string
+		fileName string
+		expError error
+	}{
+		{
+			doc:      "directory",
+			fileName: tmpDir,
+			expError: errNotRegularFile,
+		},
+		{
+			doc:      "device",
+			fileName: "/dev/zero",
+			expError: errNotRegularFile,
+		},
+		{
+			doc:      "not found",
+			fileName: filepath.Join(tmpDir, "missing"),
+			expError: os.ErrNotExist,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.doc, func(t *testing.T) {
+			if tc.doc == "device" && runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+				t.Skip("depends on /dev/zero")
+			}
+
+			_, err := ParseSubIDFile(tc.fileName)
+			if !errors.Is(err, tc.expError) {
+				t.Fatalf("expected error %v, got %v", tc.expError, err)
+			}
+		})
+	}
+}
+
 func TestGetExecUser(t *testing.T) {
 	const passwdContent = `
 root:x:0:0:root user:/root:/bin/bash

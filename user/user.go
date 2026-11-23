@@ -535,7 +535,7 @@ func ParseSubID(subid io.Reader) ([]SubID, error) {
 }
 
 func ParseSubIDFileFilter(path string, filter func(SubID) bool) ([]SubID, error) {
-	subid, err := os.Open(path)
+	subid, err := openUserFile(path)
 	if err != nil {
 		return nil, err
 	}
