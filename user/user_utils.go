@@ -12,6 +12,8 @@ import (
 // generous headroom while bounding memory usage.
 const maxUserFileBytes = 10 << 20
 
+var errNotRegularFile = errors.New("not a regular file")
+
 // openUserFile attempts to open a user-database file with a limitedFile
 // capped at maxUserFileBytes. It produces an error if the given path is
 // a non-regular file.
@@ -31,7 +33,7 @@ func openUserFile(path string) (*limitedFile, error) {
 		return nil, &os.PathError{
 			Op:   "open",
 			Path: path,
-			Err:  errors.New("not a regular file"),
+			Err:  errNotRegularFile,
 		}
 	}
 
