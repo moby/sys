@@ -82,18 +82,30 @@ func lookupGroupFileFilter(path string, filter func(g Group) bool) (Group, error
 	return groups[0], nil
 }
 
+// GetPasswdPath returns the path to the system passwd file.
 func GetPasswdPath() (string, error) {
 	return unixPasswdPath, nil
 }
 
+// GetPasswd opens the system passwd file for reading.
+//
+// Unlike the file-based parsing functions, it does not restrict the file type
+// or limit the amount of data that can be read. The caller is responsible for
+// closing the returned reader.
 func GetPasswd() (io.ReadCloser, error) {
 	return os.Open(unixPasswdPath)
 }
 
+// GetGroupPath returns the path to the system group file.
 func GetGroupPath() (string, error) {
 	return unixGroupPath, nil
 }
 
+// GetGroup opens the system group file for reading.
+//
+// Unlike the file-based parsing functions, it does not restrict the file type
+// or limit the amount of data that can be read. The caller is responsible for
+// closing the returned reader.
 func GetGroup() (io.ReadCloser, error) {
 	return os.Open(unixGroupPath)
 }
