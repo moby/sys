@@ -129,7 +129,7 @@ func ParsePasswd(passwd io.Reader) ([]User, error) {
 }
 
 func ParsePasswdFileFilter(path string, filter func(User) bool) ([]User, error) {
-	passwd, err := os.Open(path)
+	passwd, err := openUserFile(path)
 	if err != nil {
 		return nil, err
 	}

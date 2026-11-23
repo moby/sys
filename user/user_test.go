@@ -143,6 +143,128 @@ this is just some garbage data
 	}
 }
 
+// TestParsePasswdFileCapsReads asserts the boundary behavior of the read cap:
+// well below, ending exactly at, and past maxUserFileBytes.
+func TestParsePasswdFileCapsReads(t *testing.T) {
+	beyond := []byte("\nbeyond:x:42:42::/home/beyond:/bin/sh\n")
+
+	for _, tc := range []struct {
+		name     string
+		padBytes int
+		expUIDs  []int
+		expErr   string
+	}{
+		{
+			name:     "pad below cap, beyond is parsed",
+			padBytes: 100,
+			expUIDs:  []int{42},
+		},
+		{
+			name:     "beyond ends exactly at cap, is parsed",
+			padBytes: maxUserFileBytes - len(beyond),
+			expUIDs:  []int{42},
+		},
+		{
+			name:     "pad past cap, read errors out",
+			padBytes: maxUserFileBytes,
+			expErr:   "file exceeds",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			fileName := filepath.Join(tmpDir, "etc-passwd")
+
+			pattern := []byte("# padding\n")
+			pad := bytes.Repeat(pattern, (tc.padBytes+len(pattern)-1)/len(pattern))[:tc.padBytes]
+			if len(pad) > 0 && pad[len(pad)-1] != '\n' {
+				pad[len(pad)-1] = '\n'
+			}
+
+			data := append(pad, beyond...)
+			err := os.WriteFile(fileName, data, 0o644)
+			if err != nil {
+				t.Fatal(err)
+			}
+			users, err := ParsePasswdFile(fileName)
+			if tc.expErr != "" {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if !strings.Contains(err.Error(), tc.expErr) {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			haveUIDs := make([]int, 0, len(users))
+			for _, u := range users {
+				haveUIDs = append(haveUIDs, u.Uid)
+			}
+			if !reflect.DeepEqual(haveUIDs, tc.expUIDs) {
+				t.Fatalf("unexpected uids: got %v, want %v", haveUIDs, tc.expUIDs)
+			}
+		})
+	}
+}
+
+// TestParsePasswdFileOpenErrors verifies that non-regular and missing files are rejected.
+func TestParsePasswdFileOpenErrors(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tests := []struct {
+		doc      string
+		fileName string
+		expError error
+	}{
+		{
+			doc:      "directory",
+			fileName: tmpDir,
+			expError: errNotRegularFile,
+		},
+		{
+			doc:      "device",
+			fileName: "/dev/zero",
+			expError: errNotRegularFile,
+		},
+		{
+			doc:      "not found",
+			fileName: filepath.Join(tmpDir, "missing"),
+			expError: os.ErrNotExist,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.doc, func(t *testing.T) {
+			if tc.doc == "device" && runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+				t.Skip("depends on /dev/zero")
+			}
+
+			_, err := ParsePasswdFile(tc.fileName)
+			if !errors.Is(err, tc.expError) {
+				t.Fatalf("expected error %v, got %v", tc.expError, err)
+			}
+		})
+	}
+}
+
+func TestParsePasswdFilterDevZero(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("depends on /dev/zero")
+	}
+	dn, err := os.Open("/dev/zero")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = dn.Close() }()
+
+	const expErr = "bufio.Scanner: token too long"
+	_, err = ParsePasswdFilter(dn, nil)
+	if err == nil || !strings.Contains(err.Error(), expErr) {
+		t.Fatalf("want %q, got %v", expErr, err)
+	}
+}
+
 func TestParseGroupFilter(t *testing.T) {
 	groups, err := ParseGroupFilter(strings.NewReader(`
 root:x:0:root
