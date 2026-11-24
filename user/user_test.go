@@ -1175,3 +1175,80 @@ func largeGroup() (res string) {
 	}
 	return b.String()
 }
+
+// TestParseIDMapFileCapsReads asserts the boundary behavior of the read cap:
+// well below, ending exactly at, and past maxUserFileBytes.
+func TestParseIDMapFileCapsReads(t *testing.T) {
+	beyond := []byte("\n0 100000 65536\n")
+
+	for _, tc := range []struct {
+		name      string
+		padBytes  int
+		expIDMaps []IDMap
+		expErr    string
+	}{
+		{
+			name:      "pad below cap, beyond is parsed",
+			padBytes:  100,
+			expIDMaps: []IDMap{{ID: 0, ParentID: 100000, Count: 65536}},
+		},
+		{
+			name:      "beyond ends exactly at cap, is parsed",
+			padBytes:  maxUserFileBytes - len(beyond),
+			expIDMaps: []IDMap{{ID: 0, ParentID: 100000, Count: 65536}},
+		},
+		{
+			name:     "pad past cap, read errors out",
+			padBytes: maxUserFileBytes,
+			expErr:   "file exceeds",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fileName := filepath.Join(t.TempDir(), "uid_map")
+
+			pad := bytes.Repeat([]byte("\n"), tc.padBytes)
+			data := append(pad, beyond...)
+
+			if err := os.WriteFile(fileName, data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			idmaps, err := ParseIDMapFile(fileName)
+			if tc.expErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.expErr) {
+					t.Fatalf("expected %q error, got %v", tc.expErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(idmaps, tc.expIDMaps) {
+				t.Fatalf("unexpected idmaps: got %v, want %v", idmaps, tc.expIDMaps)
+			}
+		})
+	}
+}
+
+// TestParseIDMapFileProcfs verifies that procfs-backed ID mapping files
+// remain supported.
+func TestParseIDMapFileProcfs(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("requires Linux procfs")
+	}
+
+	for _, path := range []string{
+		"/proc/self/uid_map",
+		"/proc/self/gid_map",
+	} {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			idmaps, err := ParseIDMapFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(idmaps) == 0 {
+				t.Fatal("expected at least one ID mapping")
+			}
+		})
+	}
+}

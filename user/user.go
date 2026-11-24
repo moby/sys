@@ -599,12 +599,19 @@ func ParseIDMap(r io.Reader) ([]IDMap, error) {
 
 // ParseIDMapFileFilter parses ID mappings from the specified file,
 // returning only entries matching filter. A nil filter matches all entries.
+// Reads are limited to 10 MiB, but non-regular files are allowed to support
+// procfs-backed UID/GID mapping files.
 func ParseIDMapFileFilter(path string, filter func(IDMap) bool) ([]IDMap, error) {
-	r, err := os.Open(path)
+	// ID mapping files are typically procfs files, so we cannot use
+	// openUserFile's regular-file check. Enforce the read limit separately.
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+
+	r := newLimitedFile(f)
+	defer func() { _ = r.Close() }()
+
 	return ParseIDMapFilter(r, filter)
 }
 
