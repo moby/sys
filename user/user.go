@@ -526,14 +526,18 @@ func (s SubID) valid() bool {
 		s.Count >= 0 && s.Count <= min(maxSubID+1-s.SubID, maxSubID)
 }
 
+// ParseSubIDFile parses subordinate UID/GID ranges from the specified file.
 func ParseSubIDFile(path string) ([]SubID, error) {
 	return ParseSubIDFileFilter(path, nil)
 }
 
+// ParseSubID parses subordinate UID/GID ranges from the provided reader.
 func ParseSubID(subid io.Reader) ([]SubID, error) {
 	return ParseSubIDFilter(subid, nil)
 }
 
+// ParseSubIDFileFilter parses subordinate UID/GID ranges from the specified
+// file, returning only entries matching filter. A nil filter matches all entries.
 func ParseSubIDFileFilter(path string, filter func(SubID) bool) ([]SubID, error) {
 	subid, err := openUserFile(path)
 	if err != nil {
@@ -543,6 +547,8 @@ func ParseSubIDFileFilter(path string, filter func(SubID) bool) ([]SubID, error)
 	return ParseSubIDFilter(subid, filter)
 }
 
+// ParseSubIDFilter parses subordinate UID/GID ranges from the provided reader,
+// returning only entries matching filter. A nil filter matches all entries.
 func ParseSubIDFilter(r io.Reader, filter func(SubID) bool) ([]SubID, error) {
 	if r == nil {
 		return nil, errors.New("nil source for subid-formatted data")
@@ -581,14 +587,18 @@ func ParseSubIDFilter(r io.Reader, filter func(SubID) bool) ([]SubID, error) {
 	return out, nil
 }
 
+// ParseIDMapFile parses ID mappings from the specified file.
 func ParseIDMapFile(path string) ([]IDMap, error) {
 	return ParseIDMapFileFilter(path, nil)
 }
 
+// ParseIDMap parses ID mappings from r.
 func ParseIDMap(r io.Reader) ([]IDMap, error) {
 	return ParseIDMapFilter(r, nil)
 }
 
+// ParseIDMapFileFilter parses ID mappings from the specified file,
+// returning only entries matching filter. A nil filter matches all entries.
 func ParseIDMapFileFilter(path string, filter func(IDMap) bool) ([]IDMap, error) {
 	r, err := os.Open(path)
 	if err != nil {
@@ -598,6 +608,8 @@ func ParseIDMapFileFilter(path string, filter func(IDMap) bool) ([]IDMap, error)
 	return ParseIDMapFilter(r, filter)
 }
 
+// ParseIDMapFilter parses ID mappings from r, returning only entries
+// matching filter. A nil filter matches all entries.
 func ParseIDMapFilter(r io.Reader, filter func(IDMap) bool) ([]IDMap, error) {
 	if r == nil {
 		return nil, errors.New("nil source for idmap-formatted data")
