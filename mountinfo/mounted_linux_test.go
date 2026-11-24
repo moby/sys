@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -267,6 +268,18 @@ func requireOpenat2(t *testing.T) {
 	}
 }
 
+func requireStatx(t *testing.T) {
+	t.Helper()
+	if err := tryStatx(); err != nil {
+		t.Skipf("statx: %v (old kernel? need Linux 5.8+)", err)
+	}
+}
+
+func tryStatx() error {
+	_, err := mountedByStatx("/")
+	return err
+}
+
 func tryOpenat2() error {
 	fd, err := unix.Openat2(unix.AT_FDCWD, ".", &unix.OpenHow{Flags: unix.O_RDONLY})
 	if err == nil {
@@ -275,7 +288,7 @@ func tryOpenat2() error {
 	return err
 }
 
-func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported bool) {
+func testMountedFast(t *testing.T, path string, tc *testMount, fastSupported bool) {
 	mounted, sure, err := MountedFast(path)
 	if err != nil {
 		// Got an error; is it expected?
@@ -295,9 +308,12 @@ func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported 
 		return
 	}
 
-	if openat2Supported {
+	if fastSupported {
 		if mounted != tc.isMount {
 			t.Errorf("MountedFast: expected mounted to be %v, got %v", tc.isMount, mounted)
+		}
+		if !sure {
+			t.Error("MountedFast: expected sure to be true")
 		}
 
 		// No more checks.
@@ -305,7 +321,7 @@ func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported 
 	}
 
 	if tc.isBind {
-		// For bind mounts, in case openat2 is not supported,
+		// For bind mounts, in case neither statx nor openat2 is supported,
 		// sure and mounted must be false.
 		if sure {
 			t.Error("MountedFast: expected sure to be false for a bind mount")
@@ -328,13 +344,18 @@ func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported 
 
 func TestMountedBy(t *testing.T) {
 	checked := false
-	openat2Supported := false
+	// Whether MountedFast can reliably detect bind mounts.
+	fastSupported := false
 
 	// List of individual implementations to check.
 	toCheck := []func(string) (bool, error){mountedByMountinfo, mountedByStat}
 	if tryOpenat2() == nil {
-		openat2Supported = true
+		fastSupported = true
 		toCheck = append(toCheck, mountedByOpenat2)
+	}
+	if tryStatx() == nil {
+		fastSupported = true
+		toCheck = append(toCheck, mountedByStatx)
 	}
 
 	for _, tc := range testMounts {
@@ -360,7 +381,7 @@ func TestMountedBy(t *testing.T) {
 			}
 
 			// Check the public MountedFast() function as a whole.
-			testMountedFast(t, m, &tc, openat2Supported)
+			testMountedFast(t, m, &tc, fastSupported)
 
 			// Check individual mountedBy* implementations.
 
@@ -403,7 +424,15 @@ func TestMountedBy(t *testing.T) {
 
 func TestMountedByOpenat2VsMountinfo(t *testing.T) {
 	requireOpenat2(t)
+	testMountedByVsMountinfo(t, "mountedByOpenat2", mountedByOpenat2)
+}
 
+func TestMountedByStatxVsMountinfo(t *testing.T) {
+	requireStatx(t)
+	testMountedByVsMountinfo(t, "mountedByStatx", mountedByStatx)
+}
+
+func testMountedByVsMountinfo(t *testing.T, name string, fn func(string) (bool, error)) {
 	mounts, err := GetMounts(nil)
 	if err != nil {
 		t.Fatalf("GetMounts error: %v", err)
@@ -416,15 +445,39 @@ func TestMountedByOpenat2VsMountinfo(t *testing.T) {
 			// (this special case is handled by Mounted).
 			continue
 		}
-		mounted, err := mountedByOpenat2(m)
+		if !mountReachable(t, mount) {
+			continue
+		}
+		mounted, err := fn(m)
 		if err != nil {
 			if !errors.Is(err, os.ErrPermission) {
-				t.Errorf("mountedByOpenat2(%q) error: %+v", m, err)
+				t.Errorf("%s(%q) error: %+v", name, m, err)
 			}
 		} else if !mounted {
-			t.Errorf("mountedByOpenat2(%q): expected true, got false", m)
+			t.Errorf("%s(%q): expected true, got false", name, m)
 		}
 	}
+}
+
+// mountReachable checks whether the mount can be accessed via its mount point,
+// as a mount may be hidden by a later overmount of its mount point (or one of
+// its parents), while its mountinfo entry remains.
+func mountReachable(t *testing.T, mount *Info) bool {
+	t.Helper()
+	var st unix.Statx_t
+	err := unix.Statx(unix.AT_FDCWD, mount.Mountpoint, unix.AT_NO_AUTOMOUNT, unix.STATX_MNT_ID, &st)
+	if err != nil {
+		t.Logf("skipping %q: statx: %v", mount.Mountpoint, err)
+		return false
+	}
+	if st.Mask&unix.STATX_MNT_ID == 0 {
+		return true // Can't tell, assume it is.
+	}
+	if st.Mnt_id != uint64(mount.ID) {
+		t.Logf("skipping %q: mount ID %d, want %d (overmounted?)", mount.Mountpoint, st.Mnt_id, mount.ID)
+		return false
+	}
+	return true
 }
 
 // TestMountedRoot checks that Mounted* functions always return true for root
@@ -435,6 +488,8 @@ func TestMountedRoot(t *testing.T) {
 		"/../../",
 		"/tmp/..",
 		strings.Repeat("../", unix.PathMax/3), // Hope $CWD is not too deep down.
+		"/proc/self/root",
+		rootLink(t),
 	} {
 		mounted, err := Mounted(path)
 		if err != nil || !mounted {
@@ -445,5 +500,61 @@ func TestMountedRoot(t *testing.T) {
 		if err != nil || !mounted || !sure {
 			t.Errorf("MountedFast(%q): expected true, true, <nil>; got %v, %v, %v", path, mounted, sure, err)
 		}
+	}
+}
+
+// rootLink creates a symlink to / and returns its path.
+func rootLink(t *testing.T) string {
+	t.Helper()
+	link := filepath.Join(t.TempDir(), "root")
+	if err := os.Symlink("/", link); err != nil {
+		t.Fatal(err)
+	}
+	return link
+}
+
+// TestMountedRootChroot checks that Mounted* functions return true for
+// a path resolving to root in a chroot, where root is not a mount root.
+func TestMountedRootChroot(t *testing.T) {
+	const env = "MOUNTINFO_TEST_CHROOT"
+	if dir := os.Getenv(env); dir != "" {
+		// In the child: chroot and check.
+		if err := unix.Chroot(dir); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chdir("/"); err != nil {
+			t.Fatal(err)
+		}
+		for _, path := range []string{"/", "/root", "/dir/.."} {
+			mounted, err := Mounted(path)
+			if err != nil || !mounted {
+				t.Errorf("Mounted(%q): expected true, <nil>; got %v, %v", path, mounted, err)
+			}
+			mounted, sure, err := MountedFast(path)
+			if err != nil || !mounted || !sure {
+				t.Errorf("MountedFast(%q): expected true, true, <nil>; got %v, %v, %v", path, mounted, sure, err)
+			}
+		}
+		return
+	}
+
+	if os.Getuid() != 0 {
+		t.Skip("root required")
+	}
+	dir := t.TempDir()
+	if err := os.Symlink("/", filepath.Join(dir, "root")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if m, err := Mounted(dir); err != nil || m {
+		t.Skipf("%s is a mount point (or error: %v)", dir, err)
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=^TestMountedRootChroot$", "-test.v")
+	cmd.Env = append(os.Environ(), env+"="+dir)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("child failed: %v\n%s", err, out)
 	}
 }
