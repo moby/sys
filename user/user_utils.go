@@ -37,14 +37,18 @@ func openUserFile(path string) (*limitedFile, error) {
 		}
 	}
 
+	return newLimitedFile(f), nil
+}
+
+func newLimitedFile(f *os.File) *limitedFile {
 	return &limitedFile{
 		File: f,
 		// Allow one byte past the cap so an overflow surfaces as an
 		// error rather than a silent EOF that the parser would treat as
 		// a clean end-of-file (and miss any entries past the cap).
 		LimitedReader: &io.LimitedReader{R: f, N: maxUserFileBytes + 1},
-		name:          path,
-	}, nil
+		name:          f.Name(),
+	}
 }
 
 type limitedFile struct {
