@@ -99,7 +99,7 @@ func TestMount(t *testing.T) {
 }
 
 // validateMount checks that mnt has the given options
-func validateMount(t *testing.T, mnt string, opts, optional, vfs string) {
+func validateMount(t *testing.T, mnt, opts, optional, vfs string) {
 	info, err := mountinfo.GetMounts(nil)
 	if err != nil {
 		t.Fatal(err)

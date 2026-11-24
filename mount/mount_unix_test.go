@@ -209,15 +209,7 @@ func TestRecursiveUnmountTooGreedy(t *testing.T) {
 	// a mount point, or we'll hit the fast path in RecursiveUnmount.
 	dirs := []string{"dir-other", "dir/subdir1", "dir/subdir1/subsub", "dir/subdir2/subsub"}
 	for _, d := range dirs {
-		dir := path.Join(tmp, d)
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := Mount("tmpfs", dir, "tmpfs", ""); err != nil {
-			t.Fatal(err)
-		}
-		//nolint:errcheck
-		defer Unmount(dir)
+		createAndMountTmpfs(t, tmp, d)
 	}
 	// sanity check
 	mounted, err := mountinfo.Mounted(path.Join(tmp, "dir-other"))
@@ -238,6 +230,18 @@ func TestRecursiveUnmountTooGreedy(t *testing.T) {
 	if !mounted {
 		t.Fatal("expected dir-other to be mounted, but it's not")
 	}
+}
+
+func createAndMountTmpfs(t *testing.T, tmp, d string) {
+	dir := path.Join(tmp, d)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := Mount("tmpfs", dir, "tmpfs", ""); err != nil {
+		t.Fatal(err)
+	}
+	//nolint:errcheck // Ignore error in tests
+	Unmount(dir)
 }
 
 func TestRecursiveUnmount_SubMountFailsToUnmount(t *testing.T) {
@@ -263,11 +267,7 @@ func TestRecursiveUnmount_SubMountFailsToUnmount(t *testing.T) {
 	// are listed in mountinfo, but since they are unreachable, unmount will fail.
 	toMount := []string{grandChild, child, parent}
 	for _, dir := range toMount {
-		dir := dir
-		if err := Mount("tmpfs", dir, "tmpfs", ""); err != nil {
-			t.Fatal(err)
-		}
-		defer Unmount(dir) //nolint:errcheck
+		mountTemporaryDirectory(t, dir)
 	}
 
 	// unmount shadowed mounts
@@ -280,4 +280,11 @@ func TestRecursiveUnmount_SubMountFailsToUnmount(t *testing.T) {
 			}
 		})
 	}
+}
+
+func mountTemporaryDirectory(t *testing.T, dir string) {
+	if err := Mount("tmpfs", dir, "tmpfs", ""); err != nil {
+		t.Fatal(err)
+	}
+	Unmount(dir) //nolint:errcheck // Ignore error in tests
 }
